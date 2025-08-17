@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="動漫填字">
+    <meta name="application-name" content="動漫填字">
+    <title>動漫中文填字遊戲</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <main class="container">
+        <h1>動漫中文填字遊戲</h1>
+        <p class="instructions">從下方的詞庫中找出答案，並填入對應的格子裡。</p>
+        
+        <div class="game-area">
+            <div id="crossword-container">
+                 <div id="crossword-grid"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button id="check-btn">檢查答案</button>
+            <button id="hint-btn">一字提示</button> <button id="reveal-btn">顯示答案</button>
+            <button id="reset-btn">重新產生</button>
+        </div>
+        
+        <div class="word-bank">
+            <h3>可用詞庫</h3>
+            <div id="word-bank-list"></div>
+        </div>
+
+    </main>
+
+    <script src="app.js"></script>
+</body>
+</html>
