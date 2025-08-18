@@ -18,6 +18,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const gridElement = document.getElementById('crossword-grid');
     const wordBankElement = document.getElementById('word-bank-list');
 
+    // Word editor system
+    let wordInputs = {}; // Store input content for each word
+
+    function updateWordInputContent(row, col) {
+        // Find all words that contain this cell
+        for (const word of placedWords) {
+            for (let i = 0; i < word.word.length; i++) {
+                const cellRow = word.direction === 'down' ? word.row + i : word.row;
+                const cellCol = word.direction === 'across' ? word.col + i : word.col;
+
+                if (cellRow === row && cellCol === col) {
+                    const wordKey = `${word.row}-${word.col}-${word.direction}`;
+                    const cellInput = document.querySelector(`input[data-row='${row}'][data-col='${col}']`);
+
+                    if (cellInput && !cellInput.readOnly) {
+                        let currentContent = wordInputs[wordKey] || '';
+
+                        // Pad to correct length if needed
+                        while (currentContent.length < word.word.length) {
+                            currentContent += '';
+                        }
+
+                        // Replace character at this position
+                        const contentArray = currentContent.split('');
+                        contentArray[i] = cellInput.value;
+                        wordInputs[wordKey] = contentArray.join('');
+                    }
+                    return;
+                }
+            }
+        }
+    }
+
     function createEmptyGrid() {
         return Array.from({ length: gridSize }, () => Array(gridSize).fill(null));
     }
@@ -169,6 +202,114 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function openWordEditor(word) {
+        const wordKey = `${word.row}-${word.col}-${word.direction}`;
+
+        // Create modal for word editing
+        const modal = document.createElement('div');
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
+        modal.style.zIndex = '2000';
+        modal.style.display = 'flex';
+        modal.style.alignItems = 'center';
+        modal.style.justifyContent = 'center';
+
+        const modalContent = document.createElement('div');
+        modalContent.style.backgroundColor = 'white';
+        modalContent.style.padding = '20px';
+        modalContent.style.borderRadius = '10px';
+        modalContent.style.maxWidth = '400px';
+        modalContent.style.width = '90%';
+
+        const title = document.createElement('h3');
+        title.textContent = `編輯 ${word.number}${word.direction === 'across' ? '橫' : '直'} (${word.word.length}字)`;
+        modalContent.appendChild(title);
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.style.width = '100%';
+        input.style.padding = '10px';
+        input.style.fontSize = '16px';
+        input.style.marginBottom = '10px';
+        input.value = wordInputs[wordKey] || '';
+        input.placeholder = '輸入文字...';
+        modalContent.appendChild(input);
+
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.display = 'flex';
+        buttonContainer.style.gap = '10px';
+
+        const confirmBtn = document.createElement('button');
+        confirmBtn.textContent = '確定';
+        confirmBtn.style.padding = '10px 20px';
+        confirmBtn.style.backgroundColor = '#007bff';
+        confirmBtn.style.color = 'white';
+        confirmBtn.style.border = 'none';
+        confirmBtn.style.borderRadius = '5px';
+        confirmBtn.onclick = () => {
+            const inputText = input.value;
+            wordInputs[wordKey] = inputText;
+
+            // Fill cells with input, preserving prefilled characters
+            for (let i = 0; i < word.word.length; i++) {
+                const cellRow = word.direction === 'down' ? word.row + i : word.row;
+                const cellCol = word.direction === 'across' ? word.col + i : word.col;
+                const cellInput = document.querySelector(`input[data-row='${cellRow}'][data-col='${cellCol}']`);
+
+                if (cellInput) {
+                    if (cellInput.readOnly) {
+                        // Keep prefilled character
+                        cellInput.value = word.word[i];
+                    } else {
+                        // Fill with user input or empty
+                        cellInput.value = inputText[i] || '';
+                    }
+                }
+            }
+
+            document.body.removeChild(modal);
+        };
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = '取消';
+        cancelBtn.style.padding = '10px 20px';
+        cancelBtn.style.backgroundColor = '#6c757d';
+        cancelBtn.style.color = 'white';
+        cancelBtn.style.border = 'none';
+        cancelBtn.style.borderRadius = '5px';
+        cancelBtn.onclick = () => {
+            document.body.removeChild(modal);
+        };
+
+        buttonContainer.appendChild(confirmBtn);
+        buttonContainer.appendChild(cancelBtn);
+        modalContent.appendChild(buttonContainer);
+        modal.appendChild(modalContent);
+        document.body.appendChild(modal);
+
+        input.focus();
+
+        // Handle Enter key
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                confirmBtn.click();
+            } else if (e.key === 'Escape') {
+                cancelBtn.click();
+            }
+        });
+
+        // Click outside to cancel
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                cancelBtn.click();
+            }
+        });
+    }
+
     function render() {
         gridElement.innerHTML = '';
         wordBankElement.innerHTML = '';
@@ -195,6 +336,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     input.maxLength = 1;
                     input.dataset.row = r;
                     input.dataset.col = c;
+
+                    // Update stored word input when typing directly
+                    input.addEventListener('input', () => {
+                        updateWordInputContent(r, c);
+                    });
+
                     inputs[`${r}-${c}`] = input;
                     cell.appendChild(input);
                 }
@@ -236,6 +383,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 clueNumSpan.className = 'clue-number';
                 clueNumSpan.textContent = number;
                 cell.prepend(clueNumSpan);
+
+                // Add edit button for this word
+                const editBtn = document.createElement('button');
+                editBtn.className = 'word-edit-btn';
+                editBtn.textContent = '✏️';
+                editBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    openWordEditor(placedWords.find(w => w.number === number && w.direction === direction));
+                };
+                cell.appendChild(editBtn);
             }
             addedClues.add(clueKey);
         }
