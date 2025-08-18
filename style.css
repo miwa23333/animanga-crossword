@@ -29,7 +29,7 @@ body {
     background-color: var(--white-color);
     padding: 15px;
     border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     text-align: center;
 }
 
@@ -96,8 +96,10 @@ h1 {
 
 /* --- NEW: Style for hint-revealed cells --- */
 .cell input.hint-revealed {
-    color: #d9534f; /* Hinted letters in red */
-    background-color: #fff3cd; /* Light yellow background */
+    color: #d9534f;
+    /* Hinted letters in red */
+    background-color: #fff3cd;
+    /* Light yellow background */
 }
 
 .cell.black {
@@ -138,11 +140,22 @@ h1 {
 }
 
 /* --- NEW: Style for the hint button --- */
-#hint-btn { background-color: #f0ad4e; } /* Orange color for hint */
-#hint-btn:hover { background-color: #ec971f; }
+#hint-btn {
+    background-color: #f0ad4e;
+}
 
-#reveal-btn { background-color: #28a745; }
-#reset-btn { background-color: #dc3545; }
+/* Orange color for hint */
+#hint-btn:hover {
+    background-color: #ec971f;
+}
+
+#reveal-btn {
+    background-color: #28a745;
+}
+
+#reset-btn {
+    background-color: #dc3545;
+}
 
 /* --- Word Bank --- */
 .word-bank {
@@ -173,7 +186,7 @@ h1 {
         padding: 40px;
         font-size: 18px;
     }
-    
+
     #crossword-container {
         width: 100%;
         max-width: 600px;

@@ -1,14 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
     const words = [
-        "終末的後宮", "少女前線", "擅長捉弄人的高木同學", "戀上換裝娃娃", "明日同學的水手服", 
-        "派對咖孔明", "朋友遊戲", "相合之物", "古見同學有交流障礙症", "式守同學不只可愛而已", 
-        "夏日時光", "契約之吻", "異世界歸來的舅舅", "徹夜之歌", "惑星公主蜥蜴騎士", "狂賭之淵雙", 
-        "我的英雄學院", "黃金神威", "秋葉原冥途戰爭", "孤獨搖滾", "鏈鋸人", 
-        "間諜教室", "久保同學不放過我", "天國大魔境", "地獄樂", "我內心的糟糕念頭", 
-        "為美好的世界獻上爆焰", "在無神世界裡進行傳教活動", "我推的孩子", "我喜歡的女孩忘記戴眼鏡", 
-        "能幹貓今天也憂鬱", "死神少爺與黑女僕", "英雄教室", "葬送的芙莉蓮", "不死不運", 
-        "我們的雨色協議", "星靈感應", "藥師少女的獨語", "夢想成為魔法少女", "魔都精兵的奴隸", 
-        "迷宮飯", "我獨自升級", "關於我轉生變成史萊姆這檔事", "夜晚的水母不會游泳", 
+        "終末的後宮", "少女前線", "擅長捉弄人的高木同學", "戀上換裝娃娃", "明日同學的水手服",
+        "派對咖孔明", "朋友遊戲", "相合之物", "古見同學有交流障礙症", "式守同學不只可愛而已",
+        "夏日時光", "契約之吻", "異世界歸來的舅舅", "徹夜之歌", "惑星公主蜥蜴騎士", "狂賭之淵雙",
+        "我的英雄學院", "黃金神威", "秋葉原冥途戰爭", "孤獨搖滾", "鏈鋸人",
+        "間諜教室", "久保同學不放過我", "天國大魔境", "地獄樂", "我內心的糟糕念頭",
+        "為美好的世界獻上爆焰", "在無神世界裡進行傳教活動", "我推的孩子", "我喜歡的女孩忘記戴眼鏡",
+        "能幹貓今天也憂鬱", "死神少爺與黑女僕", "英雄教室", "葬送的芙莉蓮", "不死不運",
+        "我們的雨色協議", "星靈感應", "藥師少女的獨語", "夢想成為魔法少女", "魔都精兵的奴隸",
+        "迷宮飯", "我獨自升級", "關於我轉生變成史萊姆這檔事", "夜晚的水母不會游泳",
         "失憶投捕", "膽大黨"
     ];
 
@@ -21,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function createEmptyGrid() {
         return Array.from({ length: gridSize }, () => Array(gridSize).fill(null));
     }
-    
+
     function shuffleArray(array) {
         for (let i = array.length - 1; i > 0; i--) {
             const j = Math.floor(Math.random() * (i + 1));
@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return array;
     }
-    
+
     function canPlaceWord(word, r, c, dir) {
         if (r < 0 || c < 0) return false;
 
@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isEmpty = grid[r][c + i] === null;
 
                 if (!isIntersection && !isEmpty) return false;
-                
+
                 if (isEmpty) {
                     if (r > 0 && grid[r - 1][c + i] !== null) return false;
                     if (r < gridSize - 1 && grid[r + 1][c + i] !== null) return false;
@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
             for (let i = 0; i < word.length; i++) {
                 const isIntersection = grid[r + i][c] === word[i];
                 const isEmpty = grid[r + i][c] === null;
-                
+
                 if (!isIntersection && !isEmpty) return false;
 
                 if (isEmpty) {
@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return true;
     }
-    
+
     function placeWord(word, r, c, dir, clueNum) {
         const wordInfo = { word, row: r, col: c, direction: dir, number: clueNum };
         placedWords.push(wordInfo);
@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function generatePuzzle() {
         placedWords = [];
         grid = createEmptyGrid();
-        
+
         const shuffledWords = shuffleArray([...words]);
         const firstWord = shuffledWords.shift();
         const remainingWords = shuffledWords.sort((a, b) => b.length - a.length);
@@ -94,9 +94,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const startRow = Math.floor(gridSize / 2);
         const startCol = Math.floor((gridSize - firstWord.length) / 2);
         placeWord(firstWord, startRow, startCol, startDirection, 0);
-        
+
         let attempts = 0;
-        while(remainingWords.length > 0 && attempts < 10) { 
+        while (remainingWords.length > 0 && attempts < 10) {
             const wordToPlace = remainingWords.shift();
             let bestFit = { score: -1 };
 
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (pWord.word[i] === wordToPlace[j]) {
                             let r, c;
                             const newDir = pWord.direction === 'across' ? 'down' : 'across';
-                            
+
                             if (pWord.direction === 'across') {
                                 r = pWord.row - j;
                                 c = pWord.col + i;
@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                 r = pWord.row + i;
                                 c = pWord.col - j;
                             }
-                            
+
                             if (canPlaceWord(wordToPlace, r, c, newDir)) {
                                 let score = 0;
                                 for (let k = 0; k < wordToPlace.length; k++) {
@@ -131,14 +131,14 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (bestFit.score > -1) {
-                placeWord(bestFit.word, bestFit.row, bestFit.col, bestFit.direction, 0); 
+                placeWord(bestFit.word, bestFit.row, bestFit.col, bestFit.direction, 0);
                 attempts = 0;
             } else {
                 remainingWords.push(wordToPlace);
                 attempts++;
             }
         }
-        
+
         let minR = gridSize, maxR = 0, minC = gridSize, maxC = 0;
         if (placedWords.length > 0) {
             for (const p of placedWords) {
@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function render() {
         gridElement.innerHTML = '';
         wordBankElement.innerHTML = '';
-        
+
         const { minR, maxR, minC, maxC } = puzzleBounds;
         const displayRows = maxR - minR + 1;
         const displayCols = maxC - minC + 1;
@@ -202,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        const hintPercentage = 0.3; 
+        const hintPercentage = 0.3;
         for (const { word, row, col, direction } of placedWords) {
             const numHints = Math.floor(word.length * hintPercentage);
             const indices = shuffleArray(Array.from({ length: word.length }, (_, i) => i));
@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let r = row, c = col;
                 if (direction === 'across') c += index;
                 else r += index;
-                
+
                 const input = inputs[`${r}-${c}`];
                 if (input) {
                     input.value = word[index];
@@ -222,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const addedClues = new Set();
-        const sortedClues = [...placedWords].sort((a,b) => a.number - b.number);
+        const sortedClues = [...placedWords].sort((a, b) => a.number - b.number);
         for (const { row, col, direction, number } of sortedClues) {
             const clueKey = `${number}-${direction}`;
             if (addedClues.has(clueKey)) continue;
@@ -239,7 +239,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             addedClues.add(clueKey);
         }
-        
+
         const unplacedWords = words.filter(w => !placedWords.some(p => p.word === w));
         const wordsToShow = [...placedWords.map(p => p.word), ...unplacedWords];
 
@@ -254,18 +254,18 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!input.matches('input')) return;
             const r = parseInt(input.dataset.row);
             const c = parseInt(input.dataset.col);
-            
+
             let nextInput;
-            switch(e.key) {
-                case 'ArrowUp':    nextInput = inputs[`${r-1}-${c}`]; break;
-                case 'ArrowDown':  nextInput = inputs[`${r+1}-${c}`]; break;
-                case 'ArrowLeft':  nextInput = inputs[`${r}-${c-1}`]; break;
-                case 'ArrowRight': nextInput = inputs[`${r}-${c+1}`]; break;
+            switch (e.key) {
+                case 'ArrowUp': nextInput = inputs[`${r - 1}-${c}`]; break;
+                case 'ArrowDown': nextInput = inputs[`${r + 1}-${c}`]; break;
+                case 'ArrowLeft': nextInput = inputs[`${r}-${c - 1}`]; break;
+                case 'ArrowRight': nextInput = inputs[`${r}-${c + 1}`]; break;
             }
-            if(nextInput) nextInput.focus();
+            if (nextInput) nextInput.focus();
         });
     }
-    
+
     function checkAnswers() {
         for (const { word, row, col, direction } of placedWords) {
             for (let i = 0; i < word.length; i++) {
@@ -295,14 +295,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getHint() {
         const eligibleHintCells = [];
-        
+
         // Find all cells that are not read-only and not correctly filled
         for (const { word, row, col, direction } of placedWords) {
             for (let i = 0; i < word.length; i++) {
                 const r = (direction === 'down') ? row + i : row;
                 const c = (direction === 'across') ? col + i : col;
                 const input = document.querySelector(`input[data-row='${r}'][data-col='${c}']`);
-                
+
                 if (input && !input.readOnly && input.value !== word[i]) {
                     eligibleHintCells.push({
                         input: input,
@@ -311,15 +311,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
-        
+
         if (eligibleHintCells.length === 0) {
             alert("恭喜！所有答案都已正確填寫，或者沒有更多提示了。");
             return;
         }
-        
+
         // Pick a random cell from the eligible list
         const randomHint = eligibleHintCells[Math.floor(Math.random() * eligibleHintCells.length)];
-        
+
         // Fill the cell and make it read-only
         randomHint.input.value = randomHint.correctLetter;
         randomHint.input.readOnly = true;
@@ -341,7 +341,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         render();
     }
-    
+
     document.getElementById('check-btn').addEventListener('click', checkAnswers);
     document.getElementById('reveal-btn').addEventListener('click', revealAnswers);
     document.getElementById('reset-btn').addEventListener('click', init);
