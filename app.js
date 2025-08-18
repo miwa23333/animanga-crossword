@@ -267,15 +267,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function checkAnswers() {
+        let allCorrect = true;
+        let totalCells = 0;
+        let correctCells = 0;
+
         for (const { word, row, col, direction } of placedWords) {
             for (let i = 0; i < word.length; i++) {
                 const r = direction === 'down' ? row + i : row;
                 const c = direction === 'across' ? col + i : col;
                 const input = document.querySelector(`input[data-row='${r}'][data-col='${c}']`);
                 if (input && !input.readOnly) {
-                    input.style.backgroundColor = input.value === word[i] ? '#d4edda' : '#f8d7da';
+                    totalCells++;
+                    const isCorrect = input.value === word[i];
+                    input.style.backgroundColor = isCorrect ? '#d4edda' : '#f8d7da';
+
+                    if (isCorrect) {
+                        correctCells++;
+                    } else {
+                        allCorrect = false;
+                    }
                 }
             }
+        }
+
+        // Show congratulations modal if all answers are correct
+        if (allCorrect && totalCells > 0) {
+            setTimeout(() => {
+                showCongratulationsModal();
+            }, 100); // Small delay to let the visual feedback appear first
         }
     }
 
@@ -326,6 +345,16 @@ document.addEventListener('DOMContentLoaded', () => {
         randomHint.input.classList.add('hint-revealed'); // Add class for special styling
     }
 
+    function showCongratulationsModal() {
+        const modal = document.getElementById('congratulations-modal');
+        modal.style.display = 'block';
+    }
+
+    function hideCongratulationsModal() {
+        const modal = document.getElementById('congratulations-modal');
+        modal.style.display = 'none';
+    }
+
     function init() {
         const minWords = 3;
         let generationAttempts = 0;
@@ -346,6 +375,18 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('reveal-btn').addEventListener('click', revealAnswers);
     document.getElementById('reset-btn').addEventListener('click', init);
     document.getElementById('hint-btn').addEventListener('click', getHint); // Add event listener for the new button
+
+    // Modal event listeners
+    document.getElementById('modal-ok-btn').addEventListener('click', hideCongratulationsModal);
+    document.querySelector('.close').addEventListener('click', hideCongratulationsModal);
+
+    // Close modal when clicking outside of it
+    window.addEventListener('click', (event) => {
+        const modal = document.getElementById('congratulations-modal');
+        if (event.target === modal) {
+            hideCongratulationsModal();
+        }
+    });
 
     init();
 });
