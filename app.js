@@ -15,39 +15,49 @@ document.addEventListener('DOMContentLoaded', () => {
     const gridSize = 18;
     let grid, placedWords, puzzleBounds;
 
+    let selectedInput = null;
+    let currentDirection = 'across';
+    let isComposing = false; // Used to track IME composition status
+
     const gridElement = document.getElementById('crossword-grid');
     const wordBankElement = document.getElementById('word-bank-list');
 
-    // Word editor system
-    let wordInputs = {}; // Store input content for each word
-
-    function updateWordInputContent(row, col) {
-        // Find all words that contain this cell
-        for (const word of placedWords) {
-            for (let i = 0; i < word.word.length; i++) {
-                const cellRow = word.direction === 'down' ? word.row + i : word.row;
-                const cellCol = word.direction === 'across' ? word.col + i : word.col;
-
-                if (cellRow === row && cellCol === col) {
-                    const wordKey = `${word.row}-${word.col}-${word.direction}`;
-                    const cellInput = document.querySelector(`input[data-row='${row}'][data-col='${col}']`);
-
-                    if (cellInput && !cellInput.readOnly) {
-                        let currentContent = wordInputs[wordKey] || '';
-
-                        // Pad to correct length if needed
-                        while (currentContent.length < word.word.length) {
-                            currentContent += '';
-                        }
-
-                        // Replace character at this position
-                        const contentArray = currentContent.split('');
-                        contentArray[i] = cellInput.value;
-                        wordInputs[wordKey] = contentArray.join('');
-                    }
-                    return;
-                }
+    function getInputsForWord(word) {
+        const inputs = [];
+        if (!word) return inputs;
+        for (let i = 0; i < word.word.length; i++) {
+            const r = word.direction === 'down' ? word.row + i : word.row;
+            const c = word.direction === 'across' ? word.col + i : word.col;
+            const input = document.querySelector(`input[data-row='${r}'][data-col='${c}']`);
+            if (input) {
+                inputs.push(input);
             }
+        }
+        return inputs;
+    }
+
+    function findWordAt(r, c, direction, allWords) {
+        return allWords.find(word => {
+            if (word.direction !== direction) return false;
+            if (direction === 'across') {
+                return word.row === r && c >= word.col && c < word.col + word.word.length;
+            } else { // 'down'
+                return word.col === c && r >= word.row && r < word.row + word.word.length;
+            }
+        });
+    }
+
+    function updateHighlight() {
+        document.querySelectorAll('input.highlight').forEach(el => el.classList.remove('highlight'));
+        if (!selectedInput) return;
+
+        const r = parseInt(selectedInput.dataset.row);
+        const c = parseInt(selectedInput.dataset.col);
+
+        const activeWord = findWordAt(r, c, currentDirection, placedWords);
+        if (activeWord) {
+            const inputs = getInputsForWord(activeWord);
+            inputs.forEach(input => input.classList.add('highlight'));
         }
     }
 
@@ -64,7 +74,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function canPlaceWord(word, r, c, dir) {
-        if (r < 0 || c < 0) return false;
+        // FIX: Added checks for r and c being >= gridSize to prevent out-of-bounds errors.
+        if (r < 0 || c < 0 || r >= gridSize || c >= gridSize) return false;
 
         if (dir === 'across') {
             if (c + word.length > gridSize) return false;
@@ -72,6 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (c + word.length < gridSize && grid[r][c + word.length] !== null) return false;
 
             for (let i = 0; i < word.length; i++) {
+                // This check is now safe because we've already validated 'r' is in bounds.
                 const isIntersection = grid[r][c + i] === word[i];
                 const isEmpty = grid[r][c + i] === null;
 
@@ -119,14 +131,42 @@ document.addEventListener('DOMContentLoaded', () => {
         placedWords = [];
         grid = createEmptyGrid();
 
-        const shuffledWords = shuffleArray([...words]);
-        const firstWord = shuffledWords.shift();
+        let shuffledWords = shuffleArray([...words]);
+
+        // ✨ FIX: Find a suitable first word that fits and remove it from the list.
+        const firstWordIndex = shuffledWords.findIndex(w => w.length <= gridSize);
+
+        // Handle edge case where no word fits the grid.
+        if (firstWordIndex === -1) {
+            console.error("Could not find any word that fits in the grid.");
+            gridElement.innerHTML = "<p>Error: Could not generate puzzle. One or more words may be too long for the grid size.</p>";
+            return;
+        }
+
+        const firstWord = shuffledWords.splice(firstWordIndex, 1)[0];
         const remainingWords = shuffledWords.sort((a, b) => b.length - a.length);
 
         const startDirection = Math.random() < 0.5 ? 'across' : 'down';
-        const startRow = Math.floor(gridSize / 2);
-        const startCol = Math.floor((gridSize - firstWord.length) / 2);
-        placeWord(firstWord, startRow, startCol, startDirection, 0);
+        let startRow, startCol;
+
+        // Calculate centered starting position based on direction
+        if (startDirection === 'across') {
+            startRow = Math.floor(gridSize / 2);
+            startCol = Math.floor((gridSize - firstWord.length) / 2);
+        } else { // 'down'
+            startRow = Math.floor((gridSize - firstWord.length) / 2);
+            startCol = Math.floor(gridSize / 2);
+        }
+
+        // Place the first word (the check is a formality here but good practice)
+        if (canPlaceWord(firstWord, startRow, startCol, startDirection)) {
+            placeWord(firstWord, startRow, startCol, startDirection, 0);
+        } else {
+            // This should never happen on a blank grid if the length check passed
+            console.error("Logical error: Failed to place the first word on an empty grid.");
+            return;
+        }
+
 
         let attempts = 0;
         while (remainingWords.length > 0 && attempts < 10) {
@@ -202,114 +242,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function openWordEditor(word) {
-        const wordKey = `${word.row}-${word.col}-${word.direction}`;
-
-        // Create modal for word editing
-        const modal = document.createElement('div');
-        modal.style.position = 'fixed';
-        modal.style.top = '0';
-        modal.style.left = '0';
-        modal.style.width = '100%';
-        modal.style.height = '100%';
-        modal.style.backgroundColor = 'rgba(0,0,0,0.5)';
-        modal.style.zIndex = '2000';
-        modal.style.display = 'flex';
-        modal.style.alignItems = 'center';
-        modal.style.justifyContent = 'center';
-
-        const modalContent = document.createElement('div');
-        modalContent.style.backgroundColor = 'white';
-        modalContent.style.padding = '20px';
-        modalContent.style.borderRadius = '10px';
-        modalContent.style.maxWidth = '400px';
-        modalContent.style.width = '90%';
-
-        const title = document.createElement('h3');
-        title.textContent = `編輯 ${word.number}${word.direction === 'across' ? '橫' : '直'} (${word.word.length}字)`;
-        modalContent.appendChild(title);
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.style.width = '100%';
-        input.style.padding = '10px';
-        input.style.fontSize = '16px';
-        input.style.marginBottom = '10px';
-        input.value = wordInputs[wordKey] || '';
-        input.placeholder = '輸入文字...';
-        modalContent.appendChild(input);
-
-        const buttonContainer = document.createElement('div');
-        buttonContainer.style.display = 'flex';
-        buttonContainer.style.gap = '10px';
-
-        const confirmBtn = document.createElement('button');
-        confirmBtn.textContent = '確定';
-        confirmBtn.style.padding = '10px 20px';
-        confirmBtn.style.backgroundColor = '#007bff';
-        confirmBtn.style.color = 'white';
-        confirmBtn.style.border = 'none';
-        confirmBtn.style.borderRadius = '5px';
-        confirmBtn.onclick = () => {
-            const inputText = input.value;
-            wordInputs[wordKey] = inputText;
-
-            // Fill cells with input, preserving prefilled characters
-            for (let i = 0; i < word.word.length; i++) {
-                const cellRow = word.direction === 'down' ? word.row + i : word.row;
-                const cellCol = word.direction === 'across' ? word.col + i : word.col;
-                const cellInput = document.querySelector(`input[data-row='${cellRow}'][data-col='${cellCol}']`);
-
-                if (cellInput) {
-                    if (cellInput.readOnly) {
-                        // Keep prefilled character
-                        cellInput.value = word.word[i];
-                    } else {
-                        // Fill with user input or empty
-                        cellInput.value = inputText[i] || '';
-                    }
-                }
-            }
-
-            document.body.removeChild(modal);
-        };
-
-        const cancelBtn = document.createElement('button');
-        cancelBtn.textContent = '取消';
-        cancelBtn.style.padding = '10px 20px';
-        cancelBtn.style.backgroundColor = '#6c757d';
-        cancelBtn.style.color = 'white';
-        cancelBtn.style.border = 'none';
-        cancelBtn.style.borderRadius = '5px';
-        cancelBtn.onclick = () => {
-            document.body.removeChild(modal);
-        };
-
-        buttonContainer.appendChild(confirmBtn);
-        buttonContainer.appendChild(cancelBtn);
-        modalContent.appendChild(buttonContainer);
-        modal.appendChild(modalContent);
-        document.body.appendChild(modal);
-
-        input.focus();
-
-        // Handle Enter key
-        input.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
-                confirmBtn.click();
-            } else if (e.key === 'Escape') {
-                cancelBtn.click();
-            }
-        });
-
-        // Click outside to cancel
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                cancelBtn.click();
-            }
-        });
-    }
-
     function render() {
         gridElement.innerHTML = '';
         wordBankElement.innerHTML = '';
@@ -336,12 +268,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     input.maxLength = 1;
                     input.dataset.row = r;
                     input.dataset.col = c;
-
-                    // Update stored word input when typing directly
-                    input.addEventListener('input', () => {
-                        updateWordInputContent(r, c);
-                    });
-
                     inputs[`${r}-${c}`] = input;
                     cell.appendChild(input);
                 }
@@ -383,16 +309,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 clueNumSpan.className = 'clue-number';
                 clueNumSpan.textContent = number;
                 cell.prepend(clueNumSpan);
-
-                // Add edit button for this word
-                const editBtn = document.createElement('button');
-                editBtn.className = 'word-edit-btn';
-                editBtn.textContent = '✏️';
-                editBtn.onclick = (e) => {
-                    e.stopPropagation();
-                    openWordEditor(placedWords.find(w => w.number === number && w.direction === direction));
-                };
-                cell.appendChild(editBtn);
             }
             addedClues.add(clueKey);
         }
@@ -406,20 +322,151 @@ document.addEventListener('DOMContentLoaded', () => {
             wordBankElement.appendChild(span);
         });
 
-        gridElement.addEventListener('keyup', e => {
+        // --- Event Handling Logic ---
+
+        gridElement.addEventListener('click', (e) => {
+            if (e.target.tagName !== 'INPUT') return;
+            const clickedInput = e.target;
+            const r = parseInt(clickedInput.dataset.row);
+            const c = parseInt(clickedInput.dataset.col);
+            if (selectedInput === clickedInput) {
+                currentDirection = currentDirection === 'across' ? 'down' : 'across';
+                if (!findWordAt(r, c, currentDirection, placedWords)) {
+                    currentDirection = currentDirection === 'across' ? 'down' : 'across';
+                }
+            } else {
+                selectedInput = clickedInput;
+                if (!findWordAt(r, c, 'across', placedWords)) {
+                    currentDirection = 'down';
+                } else {
+                    currentDirection = 'across';
+                }
+            }
+            clickedInput.focus();
+            updateHighlight();
+        });
+
+        gridElement.addEventListener('focusin', (e) => {
+            if (e.target.tagName === 'INPUT') {
+                e.target.removeAttribute('maxLength');
+            }
+        });
+
+        gridElement.addEventListener('focusout', (e) => {
+            if (e.target.tagName === 'INPUT') {
+                e.target.setAttribute('maxLength', 1);
+            }
+        });
+
+        gridElement.addEventListener('compositionstart', () => {
+            isComposing = true;
+        });
+
+        gridElement.addEventListener('compositionend', (e) => {
+            isComposing = false;
+            e.target.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+
+        gridElement.addEventListener('input', (e) => {
+            if (isComposing) return;
+
             const input = e.target;
-            if (!input.matches('input')) return;
+            const text = input.value;
+            if (!text) return;
+
             const r = parseInt(input.dataset.row);
             const c = parseInt(input.dataset.col);
 
-            let nextInput;
-            switch (e.key) {
-                case 'ArrowUp': nextInput = inputs[`${r - 1}-${c}`]; break;
-                case 'ArrowDown': nextInput = inputs[`${r + 1}-${c}`]; break;
-                case 'ArrowLeft': nextInput = inputs[`${r}-${c - 1}`]; break;
-                case 'ArrowRight': nextInput = inputs[`${r}-${c + 1}`]; break;
+            const activeWord = findWordAt(r, c, currentDirection, placedWords);
+            if (!activeWord) return;
+
+            const wordInputs = getInputsForWord(activeWord);
+            const startIndex = wordInputs.indexOf(input);
+
+            if (text.length > 1) {
+                let textIndex = 0;
+                for (let i = startIndex; i < wordInputs.length && textIndex < text.length; i++) {
+                    const currentInput = wordInputs[i];
+                    if (currentInput && !currentInput.readOnly) {
+                        currentInput.value = text[textIndex];
+                        textIndex++;
+                    }
+                }
+                input.value = text[0]; 
             }
-            if (nextInput) nextInput.focus();
+
+            let nextFocusTarget = null;
+            for (let i = startIndex + 1; i < wordInputs.length; i++) {
+                if (wordInputs[i] && !wordInputs[i].readOnly) {
+                    nextFocusTarget = wordInputs[i];
+                    break;
+                }
+            }
+
+            if (nextFocusTarget) {
+                selectedInput = nextFocusTarget;
+                nextFocusTarget.focus();
+                updateHighlight();
+            }
+        });
+
+        gridElement.addEventListener('keydown', e => {
+            const input = e.target;
+            if (input.tagName !== 'INPUT') return;
+
+            const r = parseInt(input.dataset.row);
+            const c = parseInt(input.dataset.col);
+            let nextInput = null;
+
+            if (e.key.startsWith('Arrow')) {
+                e.preventDefault();
+                switch (e.key) {
+                    case 'ArrowUp':
+                        if (currentDirection === 'down') nextInput = document.querySelector(`input[data-row='${r - 1}'][data-col='${c}']`);
+                        currentDirection = 'down';
+                        break;
+                    case 'ArrowDown':
+                        if (currentDirection === 'down') nextInput = document.querySelector(`input[data-row='${r + 1}'][data-col='${c}']`);
+                        currentDirection = 'down';
+                        break;
+                    case 'ArrowLeft':
+                        if (currentDirection === 'across') nextInput = document.querySelector(`input[data-row='${r}'][data-col='${c - 1}']`);
+                        currentDirection = 'across';
+                        break;
+                    case 'ArrowRight':
+                        if (currentDirection === 'across') nextInput = document.querySelector(`input[data-row='${r}'][data-col='${c + 1}']`);
+                        currentDirection = 'across';
+                        break;
+                }
+                
+                if (nextInput) {
+                    selectedInput = nextInput;
+                    nextInput.focus();
+                } else {
+                    selectedInput = input;
+                    input.focus();
+                }
+                updateHighlight();
+
+            } else if (e.key === 'Backspace' && input.value === '') {
+                e.preventDefault();
+                const activeWord = findWordAt(r, c, currentDirection, placedWords);
+                if (!activeWord) return;
+                
+                const wordInputs = getInputsForWord(activeWord);
+                const currentIndex = wordInputs.indexOf(input);
+
+                if (currentIndex > 0) {
+                    for (let i = currentIndex - 1; i >= 0; i--) {
+                        if (wordInputs[i] && !wordInputs[i].readOnly) {
+                            selectedInput = wordInputs[i];
+                            selectedInput.focus();
+                            updateHighlight();
+                            break;
+                        }
+                    }
+                }
+            }
         });
     }
 
@@ -446,12 +493,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
-
-        // Show congratulations modal if all answers are correct
+        
         if (allCorrect && totalCells > 0) {
             setTimeout(() => {
                 showCongratulationsModal();
-            }, 100); // Small delay to let the visual feedback appear first
+            }, 100);
         }
     }
 
@@ -471,8 +517,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getHint() {
         const eligibleHintCells = [];
-
-        // Find all cells that are not read-only and not correctly filled
         for (const { word, row, col, direction } of placedWords) {
             for (let i = 0; i < word.length; i++) {
                 const r = (direction === 'down') ? row + i : row;
@@ -493,13 +537,10 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Pick a random cell from the eligible list
         const randomHint = eligibleHintCells[Math.floor(Math.random() * eligibleHintCells.length)];
-
-        // Fill the cell and make it read-only
         randomHint.input.value = randomHint.correctLetter;
         randomHint.input.readOnly = true;
-        randomHint.input.classList.add('hint-revealed'); // Add class for special styling
+        randomHint.input.classList.add('hint-revealed');
     }
 
     function showCongratulationsModal() {
@@ -518,26 +559,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
         do {
             generatePuzzle();
+            // If puzzle generation fails (e.g., no words fit), placedWords will be empty.
+            if (!placedWords || placedWords.length === 0) {
+                break;
+            }
             generationAttempts++;
             if (generationAttempts > 50) {
                 console.warn(`Failed to generate a puzzle with at least ${minWords} words after 50 attempts.`);
                 break;
             }
         } while (placedWords.length < minWords);
+        
+        selectedInput = null;
+        currentDirection = 'across';
+        isComposing = false;
 
-        render();
+        // Only render if a puzzle was successfully generated
+        if (placedWords && placedWords.length > 0) {
+            render();
+        }
     }
 
     document.getElementById('check-btn').addEventListener('click', checkAnswers);
     document.getElementById('reveal-btn').addEventListener('click', revealAnswers);
     document.getElementById('reset-btn').addEventListener('click', init);
-    document.getElementById('hint-btn').addEventListener('click', getHint); // Add event listener for the new button
+    document.getElementById('hint-btn').addEventListener('click', getHint);
 
-    // Modal event listeners
     document.getElementById('modal-ok-btn').addEventListener('click', hideCongratulationsModal);
     document.querySelector('.close').addEventListener('click', hideCongratulationsModal);
-
-    // Close modal when clicking outside of it
+    
     window.addEventListener('click', (event) => {
         const modal = document.getElementById('congratulations-modal');
         if (event.target === modal) {

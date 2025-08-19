@@ -117,23 +117,6 @@ h1 {
     pointer-events: none;
 }
 
-.word-edit-btn {
-    position: absolute;
-    top: 1px;
-    right: 2px;
-    font-size: calc(90vw / var(--grid-cols) / 4);
-    background: rgba(0, 123, 255, 0.1);
-    border: none;
-    border-radius: 2px;
-    cursor: pointer;
-    padding: 1px 2px;
-    line-height: 1;
-}
-
-.word-edit-btn:hover {
-    background: rgba(0, 123, 255, 0.3);
-}
-
 /* --- Controls --- */
 .controls {
     margin: 20px 0;
@@ -316,4 +299,19 @@ h1 {
     .modal-content {
         margin: 10% auto;
     }
+}
+
+/* 修改原有的 focus 樣式，使其更通用 */
+.cell input:focus {
+    background-color: #e8f0fe;
+}
+
+/* 新增：高亮當前作用中詞彙的樣式 */
+.cell input.highlight {
+    background-color: #cce5ff; /* 淡藍色背景 */
+}
+
+/* 新增：當前作用中詞彙裡，被焦點選中的格子樣式 */
+.cell input.highlight:focus {
+    background-color: #aaccff; /* 較深的藍色背景 */
 }
