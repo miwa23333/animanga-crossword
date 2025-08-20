@@ -53,7 +53,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const r = parseInt(selectedInput.dataset.row);
         const c = parseInt(selectedInput.dataset.col);
-
         const activeWord = findWordAt(r, c, currentDirection, placedWords);
         if (activeWord) {
             const inputs = getInputsForWord(activeWord);
@@ -381,7 +380,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!activeWord) return;
 
             const wordInputs = getInputsForWord(activeWord);
-            const startIndex = wordInputs.indexOf(input);
+            let startIndex = wordInputs.indexOf(input);
 
             if (text.length > 1) {
                 let textIndex = 0;
@@ -389,20 +388,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     const currentInput = wordInputs[i];
                     if (currentInput && !currentInput.readOnly) {
                         currentInput.value = text[textIndex];
-                        textIndex++;
                     }
+                    textIndex++;
                 }
                 input.value = text[0]; 
             }
 
             let nextFocusTarget = null;
-            for (let i = startIndex + 1; i < wordInputs.length; i++) {
+            for (let i = startIndex + text.length; i < wordInputs.length; i++) {
                 if (wordInputs[i] && !wordInputs[i].readOnly) {
+
                     nextFocusTarget = wordInputs[i];
                     break;
                 }
             }
-
             if (nextFocusTarget) {
                 selectedInput = nextFocusTarget;
                 nextFocusTarget.focus();
