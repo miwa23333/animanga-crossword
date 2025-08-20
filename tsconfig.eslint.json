@@ -1,0 +1,12 @@
+{
+  "files": ["eslint.config.ts"],
+  "extends": "@tsconfig/strictest/tsconfig.json",
+  "compilerOptions": {
+    "noUncheckedSideEffectImports": true,
+    "module": "nodenext",
+    "types": ["@types/node"],
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+    "composite": true
+  }
+}

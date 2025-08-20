@@ -1,0 +1,13 @@
+{
+  "files": ["app.ts"],
+  "extends": "@tsconfig/strictest/tsconfig.json",
+  "compilerOptions": {
+    "noUncheckedSideEffectImports": true,
+    "module": "esnext",
+    "types": [],
+    "verbatimModuleSyntax": true,
+    "checkJs": true,
+    "target": "esnext",
+    "composite": true
+  }
+}

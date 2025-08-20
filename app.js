@@ -1,598 +1,797 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const words = [
-        "終末的後宮", "少女前線", "擅長捉弄人的高木同學", "戀上換裝娃娃", "明日同學的水手服",
-        "派對咖孔明", "朋友遊戲", "相合之物", "古見同學有交流障礙症", "式守同學不只可愛而已",
-        "夏日時光", "契約之吻", "異世界歸來的舅舅", "徹夜之歌", "惑星公主蜥蜴騎士", "狂賭之淵雙",
-        "我的英雄學院", "黃金神威", "秋葉原冥途戰爭", "孤獨搖滾", "鏈鋸人",
-        "間諜教室", "久保同學不放過我", "天國大魔境", "地獄樂", "我內心的糟糕念頭",
-        "為美好的世界獻上爆焰", "在無神世界裡進行傳教活動", "我推的孩子", "我喜歡的女孩忘記戴眼鏡",
-        "能幹貓今天也憂鬱", "死神少爺與黑女僕", "英雄教室", "葬送的芙莉蓮", "不死不運",
-        "我們的雨色協議", "星靈感應", "藥師少女的獨語", "夢想成為魔法少女", "魔都精兵的奴隸",
-        "迷宮飯", "我獨自升級", "關於我轉生變成史萊姆這檔事", "夜晚的水母不會游泳",
-        "失憶投捕", "膽大黨"
-    ];
-
-    const gridSize = 18;
-    let grid, placedWords, puzzleBounds;
-
-    let selectedInput = null;
-    let currentDirection = 'across';
-    let isComposing = false; // Used to track IME composition status
-
-    const gridElement = document.getElementById('crossword-grid');
-    const wordBankElement = document.getElementById('word-bank-list');
-
-    function getInputsForWord(word) {
-        const inputs = [];
-        if (!word) return inputs;
-        for (let i = 0; i < word.word.length; i++) {
-            const r = word.direction === 'down' ? word.row + i : word.row;
-            const c = word.direction === 'across' ? word.col + i : word.col;
-            const input = document.querySelector(`input[data-row='${r}'][data-col='${c}']`);
-            if (input) {
-                inputs.push(input);
-            }
-        }
-        return inputs;
+"use strict";
+const words = [
+    "終末的後宮",
+    "少女前線",
+    "擅長捉弄人的高木同學",
+    "戀上換裝娃娃",
+    "明日同學的水手服",
+    "派對咖孔明",
+    "朋友遊戲",
+    "相合之物",
+    "古見同學有交流障礙症",
+    "式守同學不只可愛而已",
+    "夏日時光",
+    "契約之吻",
+    "異世界歸來的舅舅",
+    "徹夜之歌",
+    "惑星公主蜥蜴騎士",
+    "狂賭之淵雙",
+    "我的英雄學院",
+    "黃金神威",
+    "秋葉原冥途戰爭",
+    "孤獨搖滾",
+    "鏈鋸人",
+    "間諜教室",
+    "久保同學不放過我",
+    "天國大魔境",
+    "地獄樂",
+    "我內心的糟糕念頭",
+    "為美好的世界獻上爆焰",
+    "在無神世界裡進行傳教活動",
+    "我推的孩子",
+    "我喜歡的女孩忘記戴眼鏡",
+    "能幹貓今天也憂鬱",
+    "死神少爺與黑女僕",
+    "英雄教室",
+    "葬送的芙莉蓮",
+    "不死不運",
+    "我們的雨色協議",
+    "星靈感應",
+    "藥師少女的獨語",
+    "夢想成為魔法少女",
+    "魔都精兵的奴隸",
+    "迷宮飯",
+    "我獨自升級",
+    "關於我轉生變成史萊姆這檔事",
+    "夜晚的水母不會游泳",
+    "失憶投捕",
+    "膽大黨",
+];
+const gridSize = 18;
+function notUndefined(value) {
+    if (value === undefined) {
+        throw new Error("value === undefined");
     }
-
-    function findWordAt(r, c, direction, allWords) {
-        return allWords.find(word => {
-            if (word.direction !== direction) return false;
-            if (direction === 'across') {
-                return word.row === r && c >= word.col && c < word.col + word.word.length;
-            } else { // 'down'
-                return word.col === c && r >= word.row && r < word.row + word.word.length;
-            }
+    return value;
+}
+function unreachable(never) {
+    throw new Error("unreachable", { cause: { never } });
+}
+function assertType(value) {
+    return value;
+}
+function at(o, index) {
+    const value = o.at(index);
+    if (value === undefined) {
+        throw new Error("o.at(index) === undefined", {
+            cause: { o, index, value },
         });
     }
-
-    function updateHighlight() {
-        document.querySelectorAll('input.highlight').forEach(el => el.classList.remove('highlight'));
-        if (!selectedInput) return;
-
-        const r = parseInt(selectedInput.dataset.row);
-        const c = parseInt(selectedInput.dataset.col);
-        const activeWord = findWordAt(r, c, currentDirection, placedWords);
-        if (activeWord) {
-            const inputs = getInputsForWord(activeWord);
-            inputs.forEach(input => input.classList.add('highlight'));
+    return value;
+}
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [at(array, j), at(array, i)];
+    }
+    return array;
+}
+function createEmptyGrid(length) {
+    return Array.from({ length }, () => Array(length).fill(null));
+}
+function canPlaceWord(grid, word, r, c, dir) {
+    // FIX: Added checks for r and c being >= gridSize to prevent out-of-bounds errors.
+    if (r < 0 || c < 0 || r >= grid.length) {
+        return false;
+    }
+    const row = grid.at(r);
+    if (row === undefined) {
+        return false;
+    }
+    if (c >= row.length) {
+        return false;
+    }
+    if (dir === "across") {
+        if (c + word.length > row.length) {
+            return false;
         }
-    }
-
-    function createEmptyGrid() {
-        return Array.from({ length: gridSize }, () => Array(gridSize).fill(null));
-    }
-
-    function shuffleArray(array) {
-        for (let i = array.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [array[i], array[j]] = [array[j], array[i]];
+        if (c > 0 && (row.at(c - 1) ?? null) !== null) {
+            return false;
         }
-        return array;
-    }
-
-    function canPlaceWord(word, r, c, dir) {
-        // FIX: Added checks for r and c being >= gridSize to prevent out-of-bounds errors.
-        if (r < 0 || c < 0 || r >= gridSize || c >= gridSize) return false;
-
-        if (dir === 'across') {
-            if (c + word.length > gridSize) return false;
-            if (c > 0 && grid[r][c - 1] !== null) return false;
-            if (c + word.length < gridSize && grid[r][c + word.length] !== null) return false;
-
-            for (let i = 0; i < word.length; i++) {
-                // This check is now safe because we've already validated 'r' is in bounds.
-                const isIntersection = grid[r][c + i] === word[i];
-                const isEmpty = grid[r][c + i] === null;
-
-                if (!isIntersection && !isEmpty) return false;
-
-                if (isEmpty) {
-                    if (r > 0 && grid[r - 1][c + i] !== null) return false;
-                    if (r < gridSize - 1 && grid[r + 1][c + i] !== null) return false;
-                }
+        if (c + word.length < row.length &&
+            (row.at(c + word.length) ?? null) !== null) {
+            return false;
+        }
+        for (let i = 0; i < word.length; ++i) {
+            // This check is now safe because we've already validated 'r' is in bounds.
+            const v = row.at(c + i);
+            if (v === undefined) {
+                return false;
             }
-        } else { // down
-            if (r + word.length > gridSize) return false;
-            if (r > 0 && grid[r - 1][c] !== null) return false;
-            if (r + word.length < gridSize && grid[r + word.length][c] !== null) return false;
-
-            for (let i = 0; i < word.length; i++) {
-                const isIntersection = grid[r + i][c] === word[i];
-                const isEmpty = grid[r + i][c] === null;
-
-                if (!isIntersection && !isEmpty) return false;
-
-                if (isEmpty) {
-                    if (c > 0 && grid[r + i][c - 1] !== null) return false;
-                    if (c < gridSize - 1 && grid[r + i][c + 1] !== null) return false;
+            const isIntersection = v === at(word, i);
+            const isEmpty = v === null;
+            if (!isIntersection && !isEmpty) {
+                return false;
+            }
+            if (isEmpty) {
+                if (r > 0 && (grid.at(r - 1)?.at(c + i) ?? null) !== null) {
+                    return false;
+                }
+                if (r < grid.length - 1 &&
+                    (grid.at(r + 1)?.at(c + i) ?? null) !== null) {
+                    return false;
                 }
             }
         }
-        return true;
     }
-
-    function placeWord(word, r, c, dir, clueNum) {
-        const wordInfo = { word, row: r, col: c, direction: dir, number: clueNum };
-        placedWords.push(wordInfo);
-
-        for (let i = 0; i < word.length; i++) {
-            if (dir === 'across') {
-                grid[r][c + i] = word[i];
-            } else {
-                grid[r + i][c] = word[i];
+    else {
+        assertType(dir);
+        if (r + word.length > grid.length) {
+            return false;
+        }
+        if (r > 0 && (grid.at(r - 1)?.at(c) ?? null) !== null) {
+            return false;
+        }
+        if (r + word.length < grid.length &&
+            (grid.at(r + word.length)?.at(c) ?? null) !== null) {
+            return false;
+        }
+        for (let i = 0; i < word.length; ++i) {
+            const row = grid.at(r + i);
+            if (row === undefined) {
+                return false;
+            }
+            const v = row.at(c);
+            if (v === undefined) {
+                return false;
+            }
+            const isIntersection = v === at(word, i);
+            const isEmpty = v === null;
+            if (!isIntersection && !isEmpty) {
+                return false;
+            }
+            if (isEmpty) {
+                if (c > 0 && (row.at(c - 1) ?? null) !== null) {
+                    return false;
+                }
+                if (c < row.length - 1 && (row.at(c + 1) ?? null) !== null) {
+                    return false;
+                }
             }
         }
     }
-
-    function generatePuzzle() {
-        placedWords = [];
-        grid = createEmptyGrid();
-
-        let shuffledWords = shuffleArray([...words]);
-
-        // ✨ FIX: Find a suitable first word that fits and remove it from the list.
-        const firstWordIndex = shuffledWords.findIndex(w => w.length <= gridSize);
-
-        // Handle edge case where no word fits the grid.
-        if (firstWordIndex === -1) {
-            console.error("Could not find any word that fits in the grid.");
-            gridElement.innerHTML = "<p>Error: Could not generate puzzle. One or more words may be too long for the grid size.</p>";
-            return;
+    return true;
+}
+function placeWord(placedWords, grid, word, r, c, dir, clueNum) {
+    placedWords.push({ word, row: r, col: c, direction: dir, number: clueNum });
+    for (let i = 0; i < word.length; ++i) {
+        if (dir === "across") {
+            at(grid, r)[c + i] = at(word, i);
         }
-
-        const firstWord = shuffledWords.splice(firstWordIndex, 1)[0];
-        const remainingWords = shuffledWords.sort((a, b) => b.length - a.length);
-
-        const startDirection = Math.random() < 0.5 ? 'across' : 'down';
-        let startRow, startCol;
-
-        // Calculate centered starting position based on direction
-        if (startDirection === 'across') {
-            startRow = Math.floor(gridSize / 2);
-            startCol = Math.floor((gridSize - firstWord.length) / 2);
-        } else { // 'down'
-            startRow = Math.floor((gridSize - firstWord.length) / 2);
-            startCol = Math.floor(gridSize / 2);
+        else {
+            assertType(dir);
+            at(grid, r + i)[c] = at(word, i);
         }
-
-        // Place the first word (the check is a formality here but good practice)
-        if (canPlaceWord(firstWord, startRow, startCol, startDirection)) {
-            placeWord(firstWord, startRow, startCol, startDirection, 0);
-        } else {
-            // This should never happen on a blank grid if the length check passed
-            console.error("Logical error: Failed to place the first word on an empty grid.");
-            return;
-        }
-
-
-        let attempts = 0;
-        while (remainingWords.length > 0 && attempts < 10) {
-            const wordToPlace = remainingWords.shift();
-            let bestFit = { score: -1 };
-
-            for (const pWord of placedWords) {
-                for (let i = 0; i < pWord.word.length; i++) {
-                    for (let j = 0; j < wordToPlace.length; j++) {
-                        if (pWord.word[i] === wordToPlace[j]) {
-                            let r, c;
-                            const newDir = pWord.direction === 'across' ? 'down' : 'across';
-
-                            if (pWord.direction === 'across') {
-                                r = pWord.row - j;
-                                c = pWord.col + i;
-                            } else {
-                                r = pWord.row + i;
-                                c = pWord.col - j;
+    }
+}
+function swapDirection(direction) {
+    switch (direction) {
+        case "across":
+            return "down";
+        case "down":
+            return "across";
+        default:
+            unreachable(direction);
+    }
+}
+function generatePuzzle(words, gridSize) {
+    const placedWords = [];
+    const grid = createEmptyGrid(gridSize);
+    const shuffledWords = shuffleArray([...words]);
+    // ✨ FIX: Find a suitable first word that fits and remove it from the list.
+    const firstWordIndex = shuffledWords.findIndex((w) => w.length <= gridSize);
+    // Handle edge case where no word fits the grid.
+    if (firstWordIndex === -1) {
+        return "Could not find any word that fits in the grid.";
+    }
+    const firstWord = at(shuffledWords, firstWordIndex);
+    shuffledWords.splice(firstWordIndex, 1);
+    const remainingWords = shuffledWords.sort((a, b) => b.length - a.length);
+    const startDirection = Math.random() < 0.5 ? "across" : "down";
+    let startRow;
+    let startCol;
+    // Calculate centered starting position based on direction
+    if (startDirection === "across") {
+        startRow = Math.floor(gridSize / 2);
+        startCol = Math.floor((gridSize - firstWord.length) / 2);
+    }
+    else {
+        assertType(startDirection);
+        startRow = Math.floor((gridSize - firstWord.length) / 2);
+        startCol = Math.floor(gridSize / 2);
+    }
+    // Place the first word (the check is a formality here but good practice)
+    if (canPlaceWord(grid, firstWord, startRow, startCol, startDirection)) {
+        placeWord(placedWords, grid, firstWord, startRow, startCol, startDirection, 0);
+    }
+    else {
+        // This should never happen on a blank grid if the length check passed
+        return "Logical error: Failed to place the first word on an empty grid.";
+    }
+    let attempts = 0;
+    let wordToPlace = remainingWords.shift();
+    while (wordToPlace !== undefined && attempts < 10) {
+        let bestFit = undefined;
+        for (const pWord of placedWords) {
+            for (let i = 0; i < pWord.word.length; ++i) {
+                for (let j = 0; j < wordToPlace.length; ++j) {
+                    if (at(pWord.word, i) === at(wordToPlace, j)) {
+                        let r;
+                        let c;
+                        const newDir = swapDirection(pWord.direction);
+                        if (pWord.direction === "across") {
+                            r = pWord.row - j;
+                            c = pWord.col + i;
+                        }
+                        else {
+                            assertType(pWord.direction);
+                            r = pWord.row + i;
+                            c = pWord.col - j;
+                        }
+                        if (canPlaceWord(grid, wordToPlace, r, c, newDir)) {
+                            let score = 0;
+                            for (let k = 0; k < wordToPlace.length; ++k) {
+                                if (newDir === "across") {
+                                    if (at(at(grid, r), c + k) === at(wordToPlace, k)) {
+                                        ++score;
+                                    }
+                                }
+                                else {
+                                    assertType(newDir);
+                                    if (at(at(grid, r + k), c) === at(wordToPlace, k)) {
+                                        ++score;
+                                    }
+                                }
                             }
-
-                            if (canPlaceWord(wordToPlace, r, c, newDir)) {
-                                let score = 0;
-                                for (let k = 0; k < wordToPlace.length; k++) {
-                                    if (newDir === 'across' && grid[r][c + k] === wordToPlace[k]) score++;
-                                    if (newDir === 'down' && grid[r + k][c] === wordToPlace[k]) score++;
-                                }
-                                if (score > bestFit.score) {
-                                    bestFit = { word: wordToPlace, row: r, col: c, direction: newDir, score };
-                                }
+                            if (bestFit === undefined || score > bestFit.score) {
+                                bestFit = {
+                                    word: wordToPlace,
+                                    row: r,
+                                    col: c,
+                                    direction: newDir,
+                                    score,
+                                };
                             }
                         }
                     }
                 }
             }
-
-            if (bestFit.score > -1) {
-                placeWord(bestFit.word, bestFit.row, bestFit.col, bestFit.direction, 0);
-                attempts = 0;
-            } else {
-                remainingWords.push(wordToPlace);
-                attempts++;
-            }
         }
-
-        let minR = gridSize, maxR = 0, minC = gridSize, maxC = 0;
-        if (placedWords.length > 0) {
-            for (const p of placedWords) {
-                if (p.direction === 'across') {
-                    minR = Math.min(minR, p.row);
-                    maxR = Math.max(maxR, p.row);
-                    minC = Math.min(minC, p.col);
-                    maxC = Math.max(maxC, p.col + p.word.length - 1);
-                } else { // down
-                    minR = Math.min(minR, p.row);
-                    maxR = Math.max(maxR, p.row + p.word.length - 1);
-                    minC = Math.min(minC, p.col);
-                    maxC = Math.max(maxC, p.col);
-                }
-            }
+        if (bestFit !== undefined) {
+            placeWord(placedWords, grid, bestFit.word, bestFit.row, bestFit.col, bestFit.direction, 0);
+            attempts = 0;
         }
-        puzzleBounds = { minR, maxR, minC, maxC };
-
-        placedWords.sort((a, b) => (a.row * gridSize + a.col) - (b.row * gridSize + b.col));
-        let currentClue = 1;
-        const starts = {};
-        for (const word of placedWords) {
-            const key = `${word.row},${word.col}`;
-            if (!starts[key]) {
-                starts[key] = currentClue++;
-            }
-            word.number = starts[key];
+        else {
+            remainingWords.push(wordToPlace);
+            ++attempts;
+        }
+        wordToPlace = remainingWords.shift();
+    }
+    let minR = gridSize;
+    let maxR = 0;
+    let minC = gridSize;
+    let maxC = 0;
+    for (const p of placedWords) {
+        if (p.direction === "across") {
+            minR = Math.min(minR, p.row);
+            maxR = Math.max(maxR, p.row);
+            minC = Math.min(minC, p.col);
+            maxC = Math.max(maxC, p.col + p.word.length - 1);
+        }
+        else {
+            assertType(p.direction);
+            minR = Math.min(minR, p.row);
+            maxR = Math.max(maxR, p.row + p.word.length - 1);
+            minC = Math.min(minC, p.col);
+            maxC = Math.max(maxC, p.col);
         }
     }
-
-    function render() {
-        gridElement.innerHTML = '';
-        wordBankElement.innerHTML = '';
-
-        const { minR, maxR, minC, maxC } = puzzleBounds;
-        const displayRows = maxR - minR + 1;
-        const displayCols = maxC - minC + 1;
-
-        gridElement.style.setProperty('--grid-cols', displayCols);
-        gridElement.style.setProperty('--grid-rows', displayRows);
-        gridElement.style.aspectRatio = `${displayCols} / ${displayRows}`;
-
-        const inputs = {};
-
-        for (let r = minR; r <= maxR; r++) {
-            for (let c = minC; c <= maxC; c++) {
-                const cell = document.createElement('div');
-                cell.className = 'cell';
-                if (grid[r][c] === null) {
-                    cell.classList.add('black');
-                } else {
-                    const input = document.createElement('input');
-                    input.type = 'text';
-                    input.maxLength = 1;
-                    input.dataset.row = r;
-                    input.dataset.col = c;
-                    inputs[`${r}-${c}`] = input;
-                    cell.appendChild(input);
-                }
-                gridElement.appendChild(cell);
+    const puzzleBounds = { minR, maxR, minC, maxC };
+    placedWords.sort((a, b) => a.row * gridSize + a.col - (b.row * gridSize + b.col));
+    let currentClue = 1;
+    const starts = new Map();
+    for (const word of placedWords) {
+        const key = `${word.row.toString()},${word.col.toString()}`;
+        let start = starts.get(key);
+        if (start === undefined) {
+            start = currentClue;
+            ++currentClue;
+            starts.set(key, start);
+        }
+        word.number = start;
+    }
+    return { placedWords, grid, puzzleBounds };
+}
+function findWordAt(r, c, direction, allWords) {
+    return allWords.find((word) => {
+        if (word.direction !== direction) {
+            return false;
+        }
+        if (direction === "across") {
+            return word.row === r && c >= word.col && c < word.col + word.word.length;
+        }
+        else {
+            assertType(direction);
+            return word.col === c && r >= word.row && r < word.row + word.word.length;
+        }
+    });
+}
+function* getInputsForWord(word) {
+    for (let i = 0; i < word.word.length; ++i) {
+        let r = word.row;
+        let c = word.col;
+        switch (word.direction) {
+            case "across":
+                c += i;
+                break;
+            case "down":
+                r += i;
+                break;
+            default:
+                unreachable(word.direction);
+        }
+        const input = document.querySelector(`input[data-row='${r.toString()}'][data-col='${c.toString()}']`);
+        if (input !== null && input instanceof HTMLInputElement) {
+            yield input;
+        }
+    }
+}
+function updateHighlight({ state, placedWords, }) {
+    for (const el of document.querySelectorAll("input.highlight")) {
+        el.classList.remove("highlight");
+    }
+    if (state.selectedInput === undefined) {
+        return;
+    }
+    const r = parseInt(notUndefined(state.selectedInput.dataset["row"]), 10);
+    const c = parseInt(notUndefined(state.selectedInput.dataset["col"]), 10);
+    const activeWord = findWordAt(r, c, state.currentDirection, placedWords);
+    if (activeWord !== undefined) {
+        const inputs = getInputsForWord(activeWord);
+        for (const input of inputs) {
+            input.classList.add("highlight");
+        }
+    }
+}
+function render({ grid, placedWords, puzzleBounds, wordBankElement, state, }) {
+    void placedWords;
+    const gridElement = document.createElement("div");
+    gridElement.id = "crossword-grid";
+    state.gridElement.parentNode?.replaceChild(gridElement, state.gridElement);
+    state.gridElement = gridElement;
+    wordBankElement.innerHTML = "";
+    const { minR, maxR, minC, maxC } = puzzleBounds;
+    const displayRows = maxR - minR + 1;
+    const displayCols = maxC - minC + 1;
+    gridElement.style.setProperty("--grid-cols", displayCols.toString());
+    gridElement.style.setProperty("--grid-rows", displayRows.toString());
+    gridElement.style.aspectRatio = `${displayCols.toString()} / ${displayRows.toString()}`;
+    const inputs = new Map();
+    for (let r = minR; r <= maxR; ++r) {
+        for (let c = minC; c <= maxC; ++c) {
+            const cell = document.createElement("div");
+            cell.className = "cell";
+            if ((grid.at(r)?.at(c) ?? null) === null) {
+                cell.classList.add("black");
+            }
+            else {
+                const input = document.createElement("input");
+                input.type = "text";
+                input.maxLength = 1;
+                input.dataset["row"] = r.toString();
+                input.dataset["col"] = c.toString();
+                inputs.set(`${r.toString()}-${c.toString()}`, input);
+                cell.appendChild(input);
+            }
+            gridElement.appendChild(cell);
+        }
+    }
+    const hintPercentage = 0.3;
+    for (const { word, row, col, direction } of placedWords) {
+        const numHints = Math.floor(word.length * hintPercentage);
+        const indices = shuffleArray(Array.from({ length: word.length }, (_, i) => i));
+        const hintIndices = indices.slice(0, numHints);
+        for (const index of hintIndices) {
+            let r = row;
+            let c = col;
+            if (direction === "across") {
+                c += index;
+            }
+            else {
+                assertType(direction);
+                r += index;
+            }
+            const input = inputs.get(`${r.toString()}-${c.toString()}`);
+            if (input !== undefined) {
+                input.value = at(word, index);
+                input.readOnly = true;
             }
         }
-
-        const hintPercentage = 0.3;
-        for (const { word, row, col, direction } of placedWords) {
-            const numHints = Math.floor(word.length * hintPercentage);
-            const indices = shuffleArray(Array.from({ length: word.length }, (_, i) => i));
-            const hintIndices = indices.slice(0, numHints);
-
-            for (const index of hintIndices) {
-                let r = row, c = col;
-                if (direction === 'across') c += index;
-                else r += index;
-
-                const input = inputs[`${r}-${c}`];
-                if (input) {
-                    input.value = word[index];
-                    input.readOnly = true;
-                }
+    }
+    const addedClues = new Set();
+    const sortedClues = [...placedWords].sort((a, b) => a.number - b.number);
+    for (const { row, col, direction, number } of sortedClues) {
+        const clueKey = `${number.toString()}-${direction}`;
+        if (addedClues.has(clueKey)) {
+            continue;
+        }
+        const gridRow = row - minR;
+        const gridCol = col - minC;
+        const cell = gridElement.children[gridRow * displayCols + gridCol];
+        if (cell !== undefined) {
+            const clueNumSpan = document.createElement("span");
+            clueNumSpan.className = "clue-number";
+            clueNumSpan.textContent = number.toString();
+            cell.prepend(clueNumSpan);
+        }
+        addedClues.add(clueKey);
+    }
+    const unplacedWords = words.filter((w) => !placedWords.some((p) => p.word === w));
+    const wordsToShow = [...placedWords.map((p) => p.word), ...unplacedWords];
+    for (const word of shuffleArray(wordsToShow)) {
+        const span = document.createElement("span");
+        span.textContent = word;
+        wordBankElement.appendChild(span);
+    }
+    // --- Event Handling Logic ---
+    gridElement.addEventListener("click", (e) => {
+        if (!(e.target instanceof HTMLElement)) {
+            return;
+        }
+        if (e.target.tagName !== "INPUT") {
+            return;
+        }
+        const clickedInput = e.target;
+        const r = parseInt(notUndefined(clickedInput.dataset["row"]), 10);
+        const c = parseInt(notUndefined(clickedInput.dataset["col"]), 10);
+        if (state.selectedInput === clickedInput) {
+            state.currentDirection = swapDirection(state.currentDirection);
+            if (findWordAt(r, c, state.currentDirection, placedWords) === undefined) {
+                state.currentDirection = swapDirection(state.currentDirection);
             }
         }
-
-        const addedClues = new Set();
-        const sortedClues = [...placedWords].sort((a, b) => a.number - b.number);
-        for (const { row, col, direction, number } of sortedClues) {
-            const clueKey = `${number}-${direction}`;
-            if (addedClues.has(clueKey)) continue;
-
-            const gridRow = row - minR;
-            const gridCol = col - minC;
-
-            const cell = gridElement.children[gridRow * displayCols + gridCol];
-            if (cell) {
-                const clueNumSpan = document.createElement('span');
-                clueNumSpan.className = 'clue-number';
-                clueNumSpan.textContent = number;
-                cell.prepend(clueNumSpan);
+        else {
+            state.selectedInput = clickedInput;
+            if (findWordAt(r, c, "across", placedWords) === undefined) {
+                state.currentDirection = "down";
             }
-            addedClues.add(clueKey);
+            else {
+                state.currentDirection = "across";
+            }
         }
-
-        const unplacedWords = words.filter(w => !placedWords.some(p => p.word === w));
-        const wordsToShow = [...placedWords.map(p => p.word), ...unplacedWords];
-
-        shuffleArray(wordsToShow).forEach(word => {
-            const span = document.createElement('span');
-            span.textContent = word;
-            wordBankElement.appendChild(span);
-        });
-
-        // --- Event Handling Logic ---
-
-        gridElement.addEventListener('click', (e) => {
-            if (e.target.tagName !== 'INPUT') return;
-            const clickedInput = e.target;
-            const r = parseInt(clickedInput.dataset.row);
-            const c = parseInt(clickedInput.dataset.col);
-            if (selectedInput === clickedInput) {
-                currentDirection = currentDirection === 'across' ? 'down' : 'across';
-                if (!findWordAt(r, c, currentDirection, placedWords)) {
-                    currentDirection = currentDirection === 'across' ? 'down' : 'across';
+        clickedInput.focus();
+        updateHighlight({ state, placedWords });
+    });
+    gridElement.addEventListener("focusin", (e) => {
+        if (!(e.target instanceof Element)) {
+            return;
+        }
+        if (e.target.tagName === "INPUT") {
+            e.target.removeAttribute("maxLength");
+        }
+    });
+    gridElement.addEventListener("focusout", (e) => {
+        if (!(e.target instanceof Element)) {
+            return;
+        }
+        if (e.target.tagName === "INPUT") {
+            e.target.setAttribute("maxLength", (1).toString());
+        }
+    });
+    gridElement.addEventListener("compositionstart", () => {
+        state.isComposing = true;
+    });
+    gridElement.addEventListener("compositionend", (e) => {
+        if (!(e.target instanceof Element)) {
+            return;
+        }
+        state.isComposing = false;
+        e.target.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    gridElement.addEventListener("input", (e) => {
+        if (!(e.target instanceof HTMLInputElement)) {
+            return;
+        }
+        if (state.isComposing) {
+            return;
+        }
+        const input = e.target;
+        const text = input.value;
+        if (text.length === 0) {
+            return;
+        }
+        const r = parseInt(notUndefined(input.dataset["row"]), 10);
+        const c = parseInt(notUndefined(input.dataset["col"]), 10);
+        const activeWord = findWordAt(r, c, state.currentDirection, placedWords);
+        if (!activeWord) {
+            return;
+        }
+        const wordInputs = Array.from(getInputsForWord(activeWord));
+        const startIndex = wordInputs.indexOf(input);
+        if (text.length > 1) {
+            let textIndex = 0;
+            for (let i = startIndex; i < wordInputs.length && textIndex < text.length; ++i) {
+                const currentInput = wordInputs[i];
+                if (currentInput !== undefined && !currentInput.readOnly) {
+                    currentInput.value = at(text, textIndex);
                 }
-            } else {
-                selectedInput = clickedInput;
-                if (!findWordAt(r, c, 'across', placedWords)) {
-                    currentDirection = 'down';
-                } else {
-                    currentDirection = 'across';
-                }
+                ++textIndex;
             }
-            clickedInput.focus();
-            updateHighlight();
-        });
-
-        gridElement.addEventListener('focusin', (e) => {
-            if (e.target.tagName === 'INPUT') {
-                e.target.removeAttribute('maxLength');
+            input.value = at(text, 0);
+        }
+        let nextFocusTarget = undefined;
+        for (let i = startIndex + text.length; i < wordInputs.length; ++i) {
+            const input = wordInputs[i];
+            if (input !== undefined && !input.readOnly) {
+                nextFocusTarget = wordInputs[i];
+                break;
             }
-        });
-
-        gridElement.addEventListener('focusout', (e) => {
-            if (e.target.tagName === 'INPUT') {
-                e.target.setAttribute('maxLength', 1);
-            }
-        });
-
-        gridElement.addEventListener('compositionstart', () => {
-            isComposing = true;
-        });
-
-        gridElement.addEventListener('compositionend', (e) => {
-            isComposing = false;
-            e.target.dispatchEvent(new Event('input', { bubbles: true }));
-        });
-
-        gridElement.addEventListener('input', (e) => {
-            if (isComposing) return;
-
-            const input = e.target;
-            const text = input.value;
-            if (!text) return;
-
-            const r = parseInt(input.dataset.row);
-            const c = parseInt(input.dataset.col);
-
-            const activeWord = findWordAt(r, c, currentDirection, placedWords);
-            if (!activeWord) return;
-
-            const wordInputs = getInputsForWord(activeWord);
-            let startIndex = wordInputs.indexOf(input);
-
-            if (text.length > 1) {
-                let textIndex = 0;
-                for (let i = startIndex; i < wordInputs.length && textIndex < text.length; i++) {
-                    const currentInput = wordInputs[i];
-                    if (currentInput && !currentInput.readOnly) {
-                        currentInput.value = text[textIndex];
+        }
+        if (nextFocusTarget !== undefined) {
+            state.selectedInput = nextFocusTarget;
+            nextFocusTarget.focus();
+            updateHighlight({ state, placedWords });
+        }
+    });
+    gridElement.addEventListener("keydown", (e) => {
+        if (!(e.target instanceof HTMLInputElement)) {
+            return;
+        }
+        const input = e.target;
+        if (input.tagName !== "INPUT") {
+            return;
+        }
+        const r = parseInt(notUndefined(input.dataset["row"]), 10);
+        const c = parseInt(notUndefined(input.dataset["col"]), 10);
+        let nextInput = null;
+        if (e.key.startsWith("Arrow")) {
+            e.preventDefault();
+            switch (e.key) {
+                case "ArrowUp": {
+                    if (state.currentDirection === "down") {
+                        nextInput = document.querySelector(`input[data-row='${(r - 1).toString()}'][data-col='${c.toString()}']`);
                     }
-                    textIndex++;
-                }
-                input.value = text[0]; 
-            }
-
-            let nextFocusTarget = null;
-            for (let i = startIndex + text.length; i < wordInputs.length; i++) {
-                if (wordInputs[i] && !wordInputs[i].readOnly) {
-
-                    nextFocusTarget = wordInputs[i];
+                    state.currentDirection = "down";
                     break;
                 }
-            }
-            if (nextFocusTarget) {
-                selectedInput = nextFocusTarget;
-                nextFocusTarget.focus();
-                updateHighlight();
-            }
-        });
-
-        gridElement.addEventListener('keydown', e => {
-            const input = e.target;
-            if (input.tagName !== 'INPUT') return;
-
-            const r = parseInt(input.dataset.row);
-            const c = parseInt(input.dataset.col);
-            let nextInput = null;
-
-            if (e.key.startsWith('Arrow')) {
-                e.preventDefault();
-                switch (e.key) {
-                    case 'ArrowUp':
-                        if (currentDirection === 'down') nextInput = document.querySelector(`input[data-row='${r - 1}'][data-col='${c}']`);
-                        currentDirection = 'down';
-                        break;
-                    case 'ArrowDown':
-                        if (currentDirection === 'down') nextInput = document.querySelector(`input[data-row='${r + 1}'][data-col='${c}']`);
-                        currentDirection = 'down';
-                        break;
-                    case 'ArrowLeft':
-                        if (currentDirection === 'across') nextInput = document.querySelector(`input[data-row='${r}'][data-col='${c - 1}']`);
-                        currentDirection = 'across';
-                        break;
-                    case 'ArrowRight':
-                        if (currentDirection === 'across') nextInput = document.querySelector(`input[data-row='${r}'][data-col='${c + 1}']`);
-                        currentDirection = 'across';
-                        break;
-                }
-                
-                if (nextInput) {
-                    selectedInput = nextInput;
-                    nextInput.focus();
-                } else {
-                    selectedInput = input;
-                    input.focus();
-                }
-                updateHighlight();
-
-            } else if (e.key === 'Backspace' && input.value === '') {
-                e.preventDefault();
-                const activeWord = findWordAt(r, c, currentDirection, placedWords);
-                if (!activeWord) return;
-                
-                const wordInputs = getInputsForWord(activeWord);
-                const currentIndex = wordInputs.indexOf(input);
-
-                if (currentIndex > 0) {
-                    for (let i = currentIndex - 1; i >= 0; i--) {
-                        if (wordInputs[i] && !wordInputs[i].readOnly) {
-                            selectedInput = wordInputs[i];
-                            selectedInput.focus();
-                            updateHighlight();
-                            break;
-                        }
+                case "ArrowDown":
+                    if (state.currentDirection === "down") {
+                        nextInput = document.querySelector(`input[data-row='${(r + 1).toString()}'][data-col='${c.toString()}']`);
                     }
-                }
+                    state.currentDirection = "down";
+                    break;
+                case "ArrowLeft":
+                    if (state.currentDirection === "across") {
+                        nextInput = document.querySelector(`input[data-row='${r.toString()}'][data-col='${(c - 1).toString()}']`);
+                    }
+                    state.currentDirection = "across";
+                    break;
+                case "ArrowRight":
+                    if (state.currentDirection === "across") {
+                        nextInput = document.querySelector(`input[data-row='${r.toString()}'][data-col='${(c + 1).toString()}']`);
+                    }
+                    state.currentDirection = "across";
+                    break;
             }
-        });
-    }
-
-    function checkAnswers() {
-        let allCorrect = true;
-        let totalCells = 0;
-        let correctCells = 0;
-
-        for (const { word, row, col, direction } of placedWords) {
-            for (let i = 0; i < word.length; i++) {
-                const r = direction === 'down' ? row + i : row;
-                const c = direction === 'across' ? col + i : col;
-                const input = document.querySelector(`input[data-row='${r}'][data-col='${c}']`);
-                if (input && !input.readOnly) {
-                    totalCells++;
-                    const isCorrect = input.value === word[i];
-                    input.style.backgroundColor = isCorrect ? '#d4edda' : '#f8d7da';
-
-                    if (isCorrect) {
-                        correctCells++;
-                    } else {
-                        allCorrect = false;
+            if (nextInput instanceof HTMLElement) {
+                state.selectedInput = nextInput;
+                nextInput.focus();
+            }
+            else {
+                state.selectedInput = input;
+                input.focus();
+            }
+            updateHighlight({ state, placedWords });
+        }
+        else if (e.key === "Backspace" && input.value === "") {
+            e.preventDefault();
+            const activeWord = findWordAt(r, c, state.currentDirection, placedWords);
+            if (!activeWord) {
+                return;
+            }
+            const wordInputs = Array.from(getInputsForWord(activeWord));
+            const currentIndex = wordInputs.indexOf(input);
+            if (currentIndex > 0) {
+                for (let i = currentIndex - 1; i >= 0; --i) {
+                    const input = wordInputs[i];
+                    if (input !== undefined && !input.readOnly) {
+                        state.selectedInput = input;
+                        state.selectedInput.focus();
+                        updateHighlight({ state, placedWords });
+                        break;
                     }
                 }
             }
         }
-        
-        if (allCorrect && totalCells > 0) {
-            setTimeout(() => {
-                showCongratulationsModal();
-            }, 100);
-        }
-    }
-
-    function revealAnswers() {
-        for (const { word, row, col, direction } of placedWords) {
-            for (let i = 0; i < word.length; i++) {
-                const r = direction === 'down' ? row + i : row;
-                const c = direction === 'across' ? col + i : col;
-                const input = document.querySelector(`input[data-row='${r}'][data-col='${c}']`);
-                if (input) {
-                    input.value = word[i];
-                    input.style.backgroundColor = '#d1ecf1';
+    });
+}
+function showCongratulationsModal() {
+    const modal = getElementById(document, "congratulations-modal");
+    modal.style.display = "block";
+}
+function hideCongratulationsModal() {
+    const modal = getElementById(document, "congratulations-modal");
+    modal.style.display = "none";
+}
+function checkAnswers(state) {
+    const placedWords = state.placedWords;
+    let allCorrect = true;
+    let totalCells = 0;
+    let correctCells = 0;
+    for (const { word, row, col, direction } of placedWords) {
+        for (let i = 0; i < word.length; ++i) {
+            let r = row;
+            let c = col;
+            switch (direction) {
+                case "across":
+                    c += i;
+                    break;
+                case "down":
+                    r += i;
+                    break;
+                default:
+                    unreachable(direction);
+            }
+            const input = document.querySelector(`input[data-row='${r.toString()}'][data-col='${c.toString()}']`);
+            if (input !== null &&
+                input instanceof HTMLInputElement &&
+                !input.readOnly) {
+                ++totalCells;
+                const isCorrect = input.value === word[i];
+                input.style.backgroundColor = isCorrect ? "#d4edda" : "#f8d7da";
+                if (isCorrect) {
+                    ++correctCells;
+                }
+                else {
+                    allCorrect = false;
                 }
             }
         }
     }
-
-    function getHint() {
-        const eligibleHintCells = [];
-        for (const { word, row, col, direction } of placedWords) {
-            for (let i = 0; i < word.length; i++) {
-                const r = (direction === 'down') ? row + i : row;
-                const c = (direction === 'across') ? col + i : col;
-                const input = document.querySelector(`input[data-row='${r}'][data-col='${c}']`);
-
-                if (input && !input.readOnly && input.value !== word[i]) {
-                    eligibleHintCells.push({
-                        input: input,
-                        correctLetter: word[i]
-                    });
-                }
+    console.log(correctCells);
+    if (allCorrect && totalCells > 0) {
+        setTimeout(() => {
+            showCongratulationsModal();
+        }, 100);
+    }
+}
+function revealAnswers(state) {
+    const placedWords = state.placedWords;
+    for (const { word, row, col, direction } of placedWords) {
+        for (let i = 0; i < word.length; ++i) {
+            let r = row;
+            let c = col;
+            switch (direction) {
+                case "across":
+                    c += i;
+                    break;
+                case "down":
+                    r += i;
+                    break;
+                default:
+                    unreachable(direction);
+            }
+            const input = document.querySelector(`input[data-row='${r.toString()}'][data-col='${c.toString()}']`);
+            if (input !== null && input instanceof HTMLInputElement) {
+                input.value = at(word, i);
+                input.style.backgroundColor = "#d1ecf1";
             }
         }
-
-        if (eligibleHintCells.length === 0) {
-            alert("恭喜！所有答案都已正確填寫，或者沒有更多提示了。");
-            return;
-        }
-
-        const randomHint = eligibleHintCells[Math.floor(Math.random() * eligibleHintCells.length)];
-        randomHint.input.value = randomHint.correctLetter;
-        randomHint.input.readOnly = true;
-        randomHint.input.classList.add('hint-revealed');
     }
-
-    function showCongratulationsModal() {
-        const modal = document.getElementById('congratulations-modal');
-        modal.style.display = 'block';
-    }
-
-    function hideCongratulationsModal() {
-        const modal = document.getElementById('congratulations-modal');
-        modal.style.display = 'none';
-    }
-
-    function init() {
-        const minWords = 3;
-        let generationAttempts = 0;
-
-        do {
-            generatePuzzle();
-            // If puzzle generation fails (e.g., no words fit), placedWords will be empty.
-            if (!placedWords || placedWords.length === 0) {
-                break;
+}
+function getHint(state) {
+    const placedWords = state.placedWords;
+    const eligibleHintCells = [];
+    for (const { word, row, col, direction } of placedWords) {
+        for (let i = 0; i < word.length; ++i) {
+            let r = row;
+            let c = col;
+            switch (direction) {
+                case "across":
+                    c += i;
+                    break;
+                case "down":
+                    r += i;
+                    break;
+                default:
+                    unreachable(direction);
             }
-            generationAttempts++;
-            if (generationAttempts > 50) {
-                console.warn(`Failed to generate a puzzle with at least ${minWords} words after 50 attempts.`);
-                break;
+            const input = document.querySelector(`input[data-row='${r.toString()}'][data-col='${c.toString()}']`);
+            if (input !== null &&
+                input instanceof HTMLInputElement &&
+                !input.readOnly &&
+                input.value !== word[i]) {
+                eligibleHintCells.push({ input, correctLetter: at(word, i) });
             }
-        } while (placedWords.length < minWords);
-        
-        selectedInput = null;
-        currentDirection = 'across';
-        isComposing = false;
-
-        // Only render if a puzzle was successfully generated
-        if (placedWords && placedWords.length > 0) {
-            render();
         }
     }
-
-    document.getElementById('check-btn').addEventListener('click', checkAnswers);
-    document.getElementById('reveal-btn').addEventListener('click', revealAnswers);
-    document.getElementById('reset-btn').addEventListener('click', init);
-    document.getElementById('hint-btn').addEventListener('click', getHint);
-
-    document.getElementById('modal-ok-btn').addEventListener('click', hideCongratulationsModal);
-    document.querySelector('.close').addEventListener('click', hideCongratulationsModal);
-    
-    window.addEventListener('click', (event) => {
-        const modal = document.getElementById('congratulations-modal');
+    if (eligibleHintCells.length === 0) {
+        alert("恭喜！所有答案都已正確填寫，或者沒有更多提示了。");
+        return;
+    }
+    const randomHint = at(eligibleHintCells, Math.floor(Math.random() * eligibleHintCells.length));
+    randomHint.input.value = randomHint.correctLetter;
+    randomHint.input.readOnly = true;
+    randomHint.input.classList.add("hint-revealed");
+}
+function init({ words, gridSize, wordBankElement, state, }) {
+    const minWords = 3;
+    let generationAttempts = 0;
+    let result = undefined;
+    do {
+        const r = generatePuzzle(words, gridSize);
+        if (typeof r === "string") {
+            break;
+        }
+        result = r;
+        ++generationAttempts;
+        if (generationAttempts > 50) {
+            console.warn(`Failed to generate a puzzle with at least ${minWords.toString()} words after 50 attempts.`);
+            break;
+        }
+    } while (result.placedWords.length < minWords);
+    state.placedWords = result?.placedWords ?? state.placedWords;
+    // Only render if a puzzle was successfully generated
+    if (result !== undefined && result.placedWords.length > 0) {
+        render({
+            ...result,
+            wordBankElement,
+            state,
+        });
+    }
+}
+function getElementById(document, elementId) {
+    const element = document.getElementById(elementId);
+    if (element === null) {
+        throw new Error("element === null", { cause: { document, elementId } });
+    }
+    return element;
+}
+function querySelector(document, selectors) {
+    const element = document.querySelector(selectors);
+    if (element === null) {
+        throw new Error("element === null", { cause: { document, selectors } });
+    }
+    return element;
+}
+document.addEventListener("DOMContentLoaded", () => {
+    const state = {
+        gridElement: getElementById(document, "crossword-grid"),
+        placedWords: [],
+        selectedInput: undefined,
+        currentDirection: "across",
+        isComposing: false,
+    };
+    const wordBankElement = getElementById(document, "word-bank-list");
+    getElementById(document, "check-btn").addEventListener("click", () => {
+        checkAnswers(state);
+    });
+    getElementById(document, "reveal-btn").addEventListener("click", () => {
+        revealAnswers(state);
+    });
+    getElementById(document, "reset-btn").addEventListener("click", () => {
+        init({ words, gridSize, wordBankElement, state });
+    });
+    getElementById(document, "hint-btn").addEventListener("click", () => {
+        getHint(state);
+    });
+    getElementById(document, "modal-ok-btn").addEventListener("click", hideCongratulationsModal);
+    querySelector(document, ".close").addEventListener("click", hideCongratulationsModal);
+    window.addEventListener("click", (event) => {
+        const modal = getElementById(document, "congratulations-modal");
         if (event.target === modal) {
             hideCongratulationsModal();
         }
     });
-
-    init();
+    init({ words, gridSize, wordBankElement, state });
 });

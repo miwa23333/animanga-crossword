@@ -1,55 +1,55 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-Hant">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black">
-    <meta name="apple-mobile-web-app-title" content="動漫填字">
-    <meta name="application-name" content="動漫填字">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, user-scalable=no"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="動漫填字" />
+    <meta name="application-name" content="動漫填字" />
     <title>動漫中文填字遊戲</title>
-    <link rel="stylesheet" href="style.css">
-</head>
+    <link rel="stylesheet" href="style.css" />
+  </head>
 
-<body>
-
+  <body>
     <main class="container">
-        <h1>動漫中文填字遊戲</h1>
-        <p class="instructions">從下方的詞庫中找出答案，並填入對應的格子裡。</p>
+      <h1>動漫中文填字遊戲</h1>
+      <p class="instructions">從下方的詞庫中找出答案，並填入對應的格子裡。</p>
 
-        <div class="game-area">
-            <div id="crossword-container">
-                <div id="crossword-grid"></div>
-            </div>
+      <div class="game-area">
+        <div id="crossword-container">
+          <div id="crossword-grid"></div>
         </div>
+      </div>
 
-        <div class="controls">
-            <button id="check-btn">檢查答案</button>
-            <button id="hint-btn">一字提示</button> <button id="reveal-btn">顯示答案</button>
-            <button id="reset-btn">重新產生</button>
-        </div>
+      <div class="controls">
+        <button id="check-btn">檢查答案</button>
+        <button id="hint-btn">一字提示</button>
+        <button id="reveal-btn">顯示答案</button>
+        <button id="reset-btn">重新產生</button>
+      </div>
 
-        <div class="word-bank">
-            <h3>可用詞庫</h3>
-            <div id="word-bank-list"></div>
-        </div>
-
+      <div class="word-bank">
+        <h3>可用詞庫</h3>
+        <div id="word-bank-list"></div>
+      </div>
     </main>
 
     <!-- Congratulations Modal -->
     <div id="congratulations-modal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <div class="modal-body">
-                <h2>🎉 恭喜！🎉</h2>
-                <p>您已成功完成所有填字遊戲！</p>
-                <button id="modal-ok-btn" class="modal-btn">確定</button>
-            </div>
+      <div class="modal-content">
+        <span class="close">&times;</span>
+        <div class="modal-body">
+          <h2>🎉 恭喜！🎉</h2>
+          <p>您已成功完成所有填字遊戲！</p>
+          <button id="modal-ok-btn" class="modal-btn">確定</button>
         </div>
+      </div>
     </div>
 
-    <script src="app.js"></script>
-</body>
-
+    <script src="app.js" type="module"></script>
+  </body>
 </html>
