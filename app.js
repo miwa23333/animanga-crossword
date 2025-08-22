@@ -347,21 +347,45 @@ function* getInputsForWord(word) {
     }
 }
 function updateHighlight({ state, placedWords, }) {
+    for (const el of document.querySelectorAll("input.highlight-focus")) {
+        el.classList.remove("highlight-focus");
+    }
     for (const el of document.querySelectorAll("input.highlight")) {
         el.classList.remove("highlight");
     }
-    if (state.selectedInput === undefined) {
+    const focusInput = state.selectedBufferInput ?? state.selectedInput;
+    if (focusInput === undefined) {
         return;
     }
-    const r = parseInt(notUndefined(state.selectedInput.dataset["row"]), 10);
-    const c = parseInt(notUndefined(state.selectedInput.dataset["col"]), 10);
+    focusInput.classList.add("highlight-focus");
+    const r = parseInt(notUndefined(focusInput.dataset["row"]), 10);
+    const c = parseInt(notUndefined(focusInput.dataset["col"]), 10);
     const activeWord = findWordAt(r, c, state.currentDirection, placedWords);
     if (activeWord !== undefined) {
         const inputs = getInputsForWord(activeWord);
         for (const input of inputs) {
+            if (input === focusInput) {
+                continue;
+            }
             input.classList.add("highlight");
         }
     }
+}
+function createBuffer({ old, parent, }) {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.style.zIndex = "-1";
+    input.style.position = "absolute";
+    // input.style.width = "0";
+    // input.style.height = "0";
+    // input.style.opacity = "0";
+    // input.style.border = "none";
+    if (old === undefined) {
+        (parent ?? document.body).prepend(input);
+        return input;
+    }
+    old.parentNode?.replaceChild(input, old);
+    return input;
 }
 function render({ grid, placedWords, puzzleBounds, wordBankElement, state, }) {
     void placedWords;
@@ -444,11 +468,105 @@ function render({ grid, placedWords, puzzleBounds, wordBankElement, state, }) {
         wordBankElement.appendChild(span);
     }
     // --- Event Handling Logic ---
-    gridElement.addEventListener("click", (e) => {
-        if (!(e.target instanceof HTMLElement)) {
+    state.bufferElement = createBuffer({ old: state.bufferElement });
+    state.bufferElement.addEventListener("focusin", (e) => {
+        if (!(e.target instanceof HTMLInputElement)) {
             return;
         }
-        if (e.target.tagName !== "INPUT") {
+        e.target.value = "";
+    });
+    state.bufferElement.addEventListener("compositionstart", (e) => {
+        console.log("compositionstart", e);
+        state.isComposing = true;
+    });
+    state.bufferElement.addEventListener("compositionupdate", (e) => {
+        console.log("compositionupdate", e);
+    });
+    state.bufferElement.addEventListener("compositionend", (e) => {
+        if (!(e.target instanceof HTMLInputElement)) {
+            return;
+        }
+        console.log("compositionend", e);
+        state.isComposing = false;
+        e.target.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    state.bufferElement.addEventListener("input", (e) => {
+        if (!(e.target instanceof HTMLInputElement)) {
+            return;
+        }
+        console.log("input", e.target.value, e);
+        const text = e.target.value;
+        if (state.isComposing) {
+            for (const { input, value } of state.selectedWord) {
+                input.value = value;
+            }
+        }
+        const selectedInput = state.selectedInput;
+        if (selectedInput !== undefined) {
+            const wordInputs = state.selectedWord.map(({ input }) => input);
+            const startIndex = wordInputs.indexOf(selectedInput);
+            if (startIndex === -1) {
+                throw new Error("startIndex === -1", {
+                    cause: { wordInputs, selectedInput },
+                });
+            }
+            let textIndex = 0;
+            for (let i = startIndex; i < wordInputs.length && textIndex < text.length; ++i) {
+                const currentInput = wordInputs[i];
+                if (currentInput !== undefined && !currentInput.readOnly) {
+                    currentInput.value = at(text, textIndex);
+                }
+                ++textIndex;
+            }
+            {
+                let nextFocusTarget = undefined;
+                for (let i = startIndex + text.length; i < wordInputs.length; ++i) {
+                    const input = wordInputs[i];
+                    if (input !== undefined) {
+                        nextFocusTarget = input;
+                        break;
+                    }
+                }
+                if (nextFocusTarget !== undefined) {
+                    state.selectedBufferInput = nextFocusTarget;
+                    updateHighlight({ state, placedWords });
+                }
+            }
+            if (!state.isComposing) {
+                let nextFocusTarget = undefined;
+                for (let i = startIndex + text.length; i < wordInputs.length; ++i) {
+                    const input = wordInputs[i];
+                    if (input !== undefined) {
+                        nextFocusTarget = input;
+                        break;
+                    }
+                }
+                if (nextFocusTarget !== undefined) {
+                    state.selectedInput = nextFocusTarget;
+                    state.bufferElement.value = "";
+                    updateHighlight({ state, placedWords });
+                }
+            }
+        }
+        if (!state.isComposing) {
+            for (const w of state.selectedWord) {
+                w.value = w.input.value;
+            }
+        }
+        state.lastBufferText = text;
+    });
+    // gridElement.addEventListener("click", (e) => {
+    //   console.log("gridElement", "click", e);
+    //   if (!(e.target instanceof HTMLInputElement)) {
+    //     return;
+    //   }
+    // });
+    gridElement.addEventListener("focusin", (e) => {
+        if (e.target === state.bufferElement) {
+            return;
+        }
+        console.log("gridElement", "focusin", e);
+        if (!(e.target instanceof HTMLInputElement)) {
             return;
         }
         const clickedInput = e.target;
@@ -462,6 +580,7 @@ function render({ grid, placedWords, puzzleBounds, wordBankElement, state, }) {
         }
         else {
             state.selectedInput = clickedInput;
+            state.selectedInput.parentNode?.prepend(state.bufferElement);
             if (findWordAt(r, c, "across", placedWords) === undefined) {
                 state.currentDirection = "down";
             }
@@ -469,151 +588,170 @@ function render({ grid, placedWords, puzzleBounds, wordBankElement, state, }) {
                 state.currentDirection = "across";
             }
         }
-        clickedInput.focus();
+        state.selectedBufferInput = undefined;
         updateHighlight({ state, placedWords });
-    });
-    gridElement.addEventListener("focusin", (e) => {
-        if (!(e.target instanceof Element)) {
-            return;
-        }
-        if (e.target.tagName === "INPUT") {
-            e.target.removeAttribute("maxLength");
-        }
-    });
-    gridElement.addEventListener("focusout", (e) => {
-        if (!(e.target instanceof Element)) {
-            return;
-        }
-        if (e.target.tagName === "INPUT") {
-            e.target.setAttribute("maxLength", (1).toString());
-        }
-    });
-    gridElement.addEventListener("compositionstart", () => {
-        state.isComposing = true;
-    });
-    gridElement.addEventListener("compositionend", (e) => {
-        if (!(e.target instanceof Element)) {
-            return;
-        }
-        state.isComposing = false;
-        e.target.dispatchEvent(new Event("input", { bubbles: true }));
-    });
-    gridElement.addEventListener("input", (e) => {
-        if (!(e.target instanceof HTMLInputElement)) {
-            return;
-        }
-        if (state.isComposing) {
-            return;
-        }
-        const input = e.target;
-        const text = input.value;
-        if (text.length === 0) {
-            return;
-        }
-        const r = parseInt(notUndefined(input.dataset["row"]), 10);
-        const c = parseInt(notUndefined(input.dataset["col"]), 10);
+        state.selectedWord = [];
         const activeWord = findWordAt(r, c, state.currentDirection, placedWords);
-        if (!activeWord) {
-            return;
+        if (activeWord !== undefined) {
+            state.selectedWord = Array.from(getInputsForWord(activeWord).map((input) => ({
+                input,
+                value: input.value,
+            })));
         }
-        const wordInputs = Array.from(getInputsForWord(activeWord));
-        const startIndex = wordInputs.indexOf(input);
-        if (text.length > 1) {
-            let textIndex = 0;
-            for (let i = startIndex; i < wordInputs.length && textIndex < text.length; ++i) {
-                const currentInput = wordInputs[i];
-                if (currentInput !== undefined && !currentInput.readOnly) {
-                    currentInput.value = at(text, textIndex);
-                }
-                ++textIndex;
-            }
-            input.value = at(text, 0);
-        }
-        let nextFocusTarget = undefined;
-        for (let i = startIndex + text.length; i < wordInputs.length; ++i) {
-            const input = wordInputs[i];
-            if (input !== undefined && !input.readOnly) {
-                nextFocusTarget = wordInputs[i];
-                break;
-            }
-        }
-        if (nextFocusTarget !== undefined) {
-            state.selectedInput = nextFocusTarget;
-            nextFocusTarget.focus();
-            updateHighlight({ state, placedWords });
-        }
+        state.bufferElement.focus({ preventScroll: true });
+        console.log("state.selectedInput", state.selectedInput);
     });
-    gridElement.addEventListener("keydown", (e) => {
-        if (!(e.target instanceof HTMLInputElement)) {
-            return;
-        }
-        const input = e.target;
-        if (input.tagName !== "INPUT") {
-            return;
-        }
-        const r = parseInt(notUndefined(input.dataset["row"]), 10);
-        const c = parseInt(notUndefined(input.dataset["col"]), 10);
-        let nextInput = null;
-        if (e.key.startsWith("Arrow")) {
-            e.preventDefault();
-            switch (e.key) {
-                case "ArrowUp": {
-                    if (state.currentDirection === "down") {
-                        nextInput = document.querySelector(`input[data-row='${(r - 1).toString()}'][data-col='${c.toString()}']`);
-                    }
-                    state.currentDirection = "down";
-                    break;
-                }
-                case "ArrowDown":
-                    if (state.currentDirection === "down") {
-                        nextInput = document.querySelector(`input[data-row='${(r + 1).toString()}'][data-col='${c.toString()}']`);
-                    }
-                    state.currentDirection = "down";
-                    break;
-                case "ArrowLeft":
-                    if (state.currentDirection === "across") {
-                        nextInput = document.querySelector(`input[data-row='${r.toString()}'][data-col='${(c - 1).toString()}']`);
-                    }
-                    state.currentDirection = "across";
-                    break;
-                case "ArrowRight":
-                    if (state.currentDirection === "across") {
-                        nextInput = document.querySelector(`input[data-row='${r.toString()}'][data-col='${(c + 1).toString()}']`);
-                    }
-                    state.currentDirection = "across";
-                    break;
-            }
-            if (nextInput instanceof HTMLElement) {
-                state.selectedInput = nextInput;
-                nextInput.focus();
-            }
-            else {
-                state.selectedInput = input;
-                input.focus();
-            }
-            updateHighlight({ state, placedWords });
-        }
-        else if (e.key === "Backspace" && input.value === "") {
-            e.preventDefault();
-            const activeWord = findWordAt(r, c, state.currentDirection, placedWords);
-            if (!activeWord) {
-                return;
-            }
-            const wordInputs = Array.from(getInputsForWord(activeWord));
-            const currentIndex = wordInputs.indexOf(input);
-            if (currentIndex > 0) {
-                for (let i = currentIndex - 1; i >= 0; --i) {
-                    const input = wordInputs[i];
-                    if (input !== undefined && !input.readOnly) {
-                        state.selectedInput = input;
-                        state.selectedInput.focus();
-                        updateHighlight({ state, placedWords });
-                        break;
-                    }
-                }
-            }
-        }
-    });
+    // gridElement.addEventListener("focusout", (e) => {
+    //   console.log("gridElement", "focusout", e);
+    //   if (!(e.target instanceof Element)) {
+    //     return;
+    //   }
+    //   if (e.target.tagName === "INPUT") {
+    //     e.target.setAttribute("maxLength", (1).toString());
+    //   }
+    // });
+    // gridElement.addEventListener("compositionstart", () => {
+    //   state.isComposing = true;
+    // });
+    // gridElement.addEventListener("compositionend", (e) => {
+    //   if (!(e.target instanceof Element)) {
+    //     return;
+    //   }
+    //   state.isComposing = false;
+    //   e.target.dispatchEvent(new Event("input", { bubbles: true }));
+    // });
+    // gridElement.addEventListener("input", (e) => {
+    //   if (e.target === state.bufferElement) {
+    //     return;
+    //   }
+    //   if (!(e.target instanceof HTMLInputElement)) {
+    //     return;
+    //   }
+    //   if (state.isComposing) {
+    //     return;
+    //   }
+    //   const input = e.target;
+    //   const text = input.value;
+    //   if (text.length === 0) {
+    //     return;
+    //   }
+    //   const r = parseInt(notUndefined(input.dataset["row"]), 10);
+    //   const c = parseInt(notUndefined(input.dataset["col"]), 10);
+    //   const activeWord = findWordAt(r, c, state.currentDirection, placedWords);
+    //   if (activeWord === undefined) {
+    //     return;
+    //   }
+    //   const wordInputs = Array.from(getInputsForWord(activeWord));
+    //   const startIndex = wordInputs.indexOf(input);
+    //   if (startIndex === -1) {
+    //     throw new Error("startIndex === -1", { cause: { wordInputs, input } });
+    //   }
+    //   if (text.length > 1) {
+    //     let textIndex = 0;
+    //     for (
+    //       let i = startIndex;
+    //       i < wordInputs.length && textIndex < text.length;
+    //       ++i
+    //     ) {
+    //       const currentInput = wordInputs[i];
+    //       if (currentInput !== undefined && !currentInput.readOnly) {
+    //         currentInput.value = at(text, textIndex);
+    //       }
+    //       ++textIndex;
+    //     }
+    //     input.value = at(text, 0);
+    //   }
+    //   // let nextFocusTarget: HTMLInputElement | undefined = undefined;
+    //   // for (let i = startIndex + text.length; i < wordInputs.length; ++i) {
+    //   //   const input = wordInputs[i];
+    //   //   if (input !== undefined && !input.readOnly) {
+    //   //     nextFocusTarget = wordInputs[i];
+    //   //     break;
+    //   //   }
+    //   // }
+    //   // if (nextFocusTarget !== undefined) {
+    //   //   state.selectedInput = nextFocusTarget;
+    //   //   nextFocusTarget.focus();
+    //   //   updateHighlight({ state, placedWords });
+    //   // }
+    // });
+    // gridElement.addEventListener("keydown", (e) => {
+    //   if (!(e.target instanceof HTMLInputElement)) {
+    //     return;
+    //   }
+    //   const input = e.target;
+    //   if (input.tagName !== "INPUT") {
+    //     return;
+    //   }
+    //   const r = parseInt(notUndefined(input.dataset["row"]), 10);
+    //   const c = parseInt(notUndefined(input.dataset["col"]), 10);
+    //   let nextInput: Element | null = null;
+    //   if (e.key.startsWith("Arrow")) {
+    //     e.preventDefault();
+    //     switch (e.key) {
+    //       case "ArrowUp": {
+    //         if (state.currentDirection === "down") {
+    //           nextInput = document.querySelector(
+    //             `input[data-row='${(r - 1).toString()}'][data-col='${c.toString()}']`,
+    //           );
+    //         }
+    //         state.currentDirection = "down";
+    //         break;
+    //       }
+    //       case "ArrowDown":
+    //         if (state.currentDirection === "down") {
+    //           nextInput = document.querySelector(
+    //             `input[data-row='${(r + 1).toString()}'][data-col='${c.toString()}']`,
+    //           );
+    //         }
+    //         state.currentDirection = "down";
+    //         break;
+    //       case "ArrowLeft":
+    //         if (state.currentDirection === "across") {
+    //           nextInput = document.querySelector(
+    //             `input[data-row='${r.toString()}'][data-col='${(c - 1).toString()}']`,
+    //           );
+    //         }
+    //         state.currentDirection = "across";
+    //         break;
+    //       case "ArrowRight":
+    //         if (state.currentDirection === "across") {
+    //           nextInput = document.querySelector(
+    //             `input[data-row='${r.toString()}'][data-col='${(c + 1).toString()}']`,
+    //           );
+    //         }
+    //         state.currentDirection = "across";
+    //         break;
+    //     }
+    //     if (nextInput instanceof HTMLInputElement) {
+    //       state.selectedInput = nextInput;
+    //       nextInput.focus();
+    //     } else {
+    //       state.selectedInput = input;
+    //       input.focus();
+    //     }
+    //     updateHighlight({ state, placedWords });
+    //   } else if (e.key === "Backspace" && input.value === "") {
+    //     e.preventDefault();
+    //     const activeWord = findWordAt(r, c, state.currentDirection, placedWords);
+    //     if (activeWord === undefined) {
+    //       return;
+    //     }
+    //     const wordInputs = Array.from(getInputsForWord(activeWord));
+    //     const currentIndex = wordInputs.indexOf(input);
+    //     if (currentIndex > 0) {
+    //       for (let i = currentIndex - 1; i >= 0; --i) {
+    //         const input = wordInputs[i];
+    //         if (input !== undefined && !input.readOnly) {
+    //           state.selectedInput = input;
+    //           state.selectedInput.focus();
+    //           updateHighlight({ state, placedWords });
+    //           break;
+    //         }
+    //       }
+    //     }
+    //   }
+    // });
 }
 function showCongratulationsModal() {
     const modal = getElementById(document, "congratulations-modal");
@@ -766,9 +904,15 @@ function querySelector(document, selectors) {
 }
 document.addEventListener("DOMContentLoaded", () => {
     const state = {
+        bufferElement: createBuffer({
+        // parent: getElementById(document, "crossword-container"),
+        }),
+        lastBufferText: undefined,
+        selectedBufferInput: undefined,
         gridElement: getElementById(document, "crossword-grid"),
         placedWords: [],
         selectedInput: undefined,
+        selectedWord: [],
         currentDirection: "across",
         isComposing: false,
     };

@@ -14,9 +14,9 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-    "Microsoft JhengHei", Roboto, Oxygen-Sans, Ubuntu, Cantarell,
-    "Helvetica Neue", sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft JhengHei", Roboto,
+    Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
   background-color: var(--light-gray);
   color: var(--dark-color);
   margin: 0;
@@ -315,4 +315,8 @@ h1 {
 /* 新增：當前作用中詞彙裡，被焦點選中的格子樣式 */
 .cell input.highlight:focus {
   background-color: #aaccff; /* 較深的藍色背景 */
+}
+
+.cell input.highlight-focus {
+  background-color: #aaccff;
 }
