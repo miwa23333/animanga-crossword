@@ -569,6 +569,9 @@ function render({ grid, placedWords, puzzleBounds, wordBankElement, state, }) {
         if (!(e.target instanceof HTMLInputElement)) {
             return;
         }
+        for (const el of state.gridElement.querySelectorAll("input")) {
+            el.style.backgroundColor = "";
+        }
         const clickedInput = e.target;
         const r = parseInt(notUndefined(clickedInput.dataset["row"]), 10);
         const c = parseInt(notUndefined(clickedInput.dataset["col"]), 10);
