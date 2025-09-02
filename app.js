@@ -561,6 +561,50 @@ function render({ grid, placedWords, puzzleBounds, wordBankElement, state, }) {
     //     return;
     //   }
     // });
+    state.bufferElement.addEventListener("keydown", (e) => {
+        if (e.key !== "Backspace" || state.isComposing) {
+            return;
+        }
+        const selectedInput = state.selectedInput;
+        if (selectedInput === undefined) {
+            return;
+        }
+        // If the buffer itself has text (e.g., from an incomplete composition),
+        // let the default backspace action clear the buffer first.
+        if (e.target instanceof HTMLInputElement && e.target.value !== "") {
+            return;
+        }
+        e.preventDefault(); // Prevent browser from navigating back.
+        // If the current grid cell has text, clear it and stay in the cell.
+        if (selectedInput.value !== "" && !selectedInput.readOnly) {
+            selectedInput.value = "";
+            const wordState = state.selectedWord.find(w => w.input === selectedInput);
+            if (wordState) {
+                wordState.value = "";
+            }
+            return;
+        }
+        // If the current grid cell is already empty, move to the previous cell.
+        const r = parseInt(notUndefined(selectedInput.dataset["row"]), 10);
+        const c = parseInt(notUndefined(selectedInput.dataset["col"]), 10);
+        const activeWord = findWordAt(r, c, state.currentDirection, placedWords);
+        if (activeWord === undefined) {
+            return;
+        }
+        const wordInputs = Array.from(getInputsForWord(activeWord));
+        const currentIndex = wordInputs.indexOf(selectedInput);
+        if (currentIndex > 0) {
+            // Find the previous non-readonly input in the current word.
+            for (let i = currentIndex - 1; i >= 0; --i) {
+                const prevInput = wordInputs[i];
+                if (prevInput !== undefined && !prevInput.readOnly) {
+                    // The 'focusin' event on the grid will handle updating the state.
+                    prevInput.focus({ preventScroll: true });
+                    break; // Stop after focusing the first available previous input.
+                }
+            }
+        }
+    });
     gridElement.addEventListener("focusin", (e) => {
         if (e.target === state.bufferElement) {
             return;
